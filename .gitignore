@@ -1,0 +1,17 @@
+# ignoring .idea related files
+.idea
+
+#ignore .DS_Store files
+.DS_Store
+
+# files to ignore in a java project
+*.class
+*.jar
+*.war
+*.ear
+*.iml
+
+# files to ignore in a maven project
+log/
+target/
+
