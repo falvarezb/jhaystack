@@ -80,6 +80,18 @@ public class PngDecoder {
         return null;
     }
 
+    /**
+     * Chunk structure (https://www.w3.org/TR/png/#5Chunk-layout):<br>
+     * - Length: 4-byte unsigned integer giving the number of bytes in the chunk's data field.<br>
+     * - Chunk type: a sequence of 4 bytes defining the chunk type, e.g. for IHDR chunks, this sequence is 73 72 68 82.<br>
+     * - Chunk data: the data bytes appropriate to the chunk type, if any<br>
+     * - CRC: 32-bit CRC calculated on the preceding bytes in the chunk, including the chunk type field and chunk data fields,
+     * but not including the length field. The CRC is always present, even for chunks containing no data
+     *
+     * @param byteBuffer
+     * @return
+     * @throws IOException
+     */
     private Chunk decodeChunk(ByteBuffer byteBuffer) throws IOException {
         int chunkLength = byteBuffer.getInt();
         byte[] chunkType = new byte[4];
@@ -163,7 +175,7 @@ public class PngDecoder {
      * @return
      * @throws IOException
      */
-    private byte[] unfilter(byte[] decompressedIdatData) throws IOException {
+    public byte[] unfilter(byte[] decompressedIdatData) throws IOException {
 //        byte[] row = new byte[1];
 //        row[0] = (byte) 240;
         try(DataInputStream di = new DataInputStream(new ByteArrayInputStream(decompressedIdatData))) {
@@ -176,19 +188,22 @@ public class PngDecoder {
                 di.readFully(scanline);
                 switch (filterType) {
                     case 0 -> { //None
+                        for (int j = 0; j < this.stride; j++) {
+                            unfilteredData[j+(i*this.stride)] = scanline[j];
+                        }
                     }
                     case 1 -> { //Sub
                         for (int j = 0; j < this.stride; j++) {
                             byte x = scanline[j];
                             byte a = j < this.bytesPerPixel ? 0 : unfilteredData[j - this.bytesPerPixel];
-                            unfilteredData[j] = (byte) (x + a);
+                            unfilteredData[j+(i*this.stride)] = (byte) (x + a);
                         }
                     }
                     case 2 -> { //Up
                         for (int j = 0; j < this.stride; j++) {
                             byte x = scanline[j];
                             byte b = i == 0 ? 0 : previousRow[j];
-                            unfilteredData[j] = (byte) (x + b);
+                            unfilteredData[j+(i*this.stride)] = (byte) (x + b);
                         }
                     }
                     case 3 -> {//Average
@@ -196,7 +211,7 @@ public class PngDecoder {
                             byte x = scanline[j];
                             byte a = j < this.bytesPerPixel ? 0 : unfilteredData[j - this.bytesPerPixel];
                             byte b = i == 0 ? 0 : previousRow[j];
-                            unfilteredData[j] = (byte) (x + (a + b) / 2);
+                            unfilteredData[j+(i*this.stride)] = (byte) (x + (a + b) / 2);
                         }
                     }
                     case 4 -> { //Paeth
@@ -205,13 +220,14 @@ public class PngDecoder {
                             byte a = j < this.bytesPerPixel ? 0 : unfilteredData[j - this.bytesPerPixel];
                             byte b = i == 0 ? 0 : previousRow[j];
                             byte c = j < this.bytesPerPixel || i == 0 ? 0 : previousRow[j - this.bytesPerPixel];
-                            unfilteredData[j] = (byte) (x + paethPredictor(a, b, c));
+                            unfilteredData[j+(i*this.stride)] = (byte) (x + paethPredictor(a, b, c));
                         }
                     }
                     default -> throw new RuntimeException("Unsupported filter type: " + filterType);
                 }
                 System.arraycopy(scanline, 0, previousRow, 0, this.stride);
             }
+            assert decompressedIdatData.length == unfilteredData.length + this.height;
             return unfilteredData;
         }
     }

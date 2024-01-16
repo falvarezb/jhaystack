@@ -5,29 +5,46 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.zip.CRC32;
+import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
 
 public class PngEncoder {
 
-        public byte[] encode(Png png) {
+        private String destFile;
+        public PngEncoder(String destFile) {
+                this.destFile = destFile;
+        }
+
+        public void encode(Png png) {
                 try(
                         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        DataOutputStream dos = new DataOutputStream(baos)
+                        DataOutputStream dos = new DataOutputStream(baos);
+                        FileOutputStream fos = new FileOutputStream(destFile)
                 ) {
                         dos.write(PngDecoder.PNG_SIGNATURE);
                         dos.write(encodeChunk(png.ihdr()).array());
                         dos.write(encodeIdat(png.imageSize(), png.imageData()).array());
                         dos.write(encodeChunk(png.iend()).array());
                         dos.flush();
-                        return baos.toByteArray();
+                        fos.write(baos.toByteArray());
+                        //return baos.toByteArray();
                 } catch (IOException e) {
                         throw new RuntimeException(e);
                 }
         }
 
+        /**
+         * Chunk structure (https://www.w3.org/TR/png/#5Chunk-layout):
+         * Length: 4-byte unsigned integer giving the number of bytes in the chunk's data field.
+         * Chunk type: a sequence of 4 bytes defining the chunk type, e.g. for IHDR chunks, this sequence is 73 72 68 82.
+         * Chunk data: the data bytes appropriate to the chunk type, if any
+         * CRC: 32-bit CRC calculated on the preceding bytes in the chunk, including the chunk type field and chunk data fields,
+         * but not including the length field. The CRC is always present, even for chunks containing no data
+         */
         private ByteBuffer encodeChunk(Chunk chunk) {
-                ByteBuffer buffer = ByteBuffer.allocate(12 + chunk.length());
+                var metadataLength = 4 + 4 + 4;
+                ByteBuffer buffer = ByteBuffer.allocate(metadataLength + chunk.length());
                 buffer.putInt(chunk.length());
                 buffer.put(chunk.type());
                 buffer.put(chunk.data());
@@ -38,38 +55,67 @@ public class PngEncoder {
 
         private ByteBuffer encodeIdat(ImageSize imageSize, byte[] imageData) throws IOException {
                 try(
-                        ByteArrayOutputStream baos = new ByteArrayOutputStream((imageSize.stride() + 1) + imageSize.height());
-                        DeflaterOutputStream dos = new DeflaterOutputStream(baos)
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream((imageSize.stride() + 1) + imageSize.height())
                 ) {
                         for (int i = 0; i < imageSize.height(); i++) {
                                 byte filterType = 0;
-                                dos.write(filterType);
-                                dos.write(imageData, 1, imageSize.stride());
+                                baos.write(filterType);
+                                baos.write(imageData, i*imageSize.stride(), imageSize.stride());
                         }
-                        byte[] compressedData = baos.toByteArray();
+                        byte[] filteredData = baos.toByteArray();
+                        write_binary_file("src/test/resources/filteredData", filteredData);
+                        byte[] compressedData = compress(filteredData);
+                        write_binary_file("src/test/resources/compressedData", compressedData);
                         // split compressed data into IDAT chunks of at most 2^16 - 1 bytes
                         int chunkSize = 65535;
                         int numChunks = compressedData.length / chunkSize;
-                        int bufferCapacity = numChunks * (12 + chunkSize);
+                        var metadataLength = 4 + 4 + 4;
+                        int bufferCapacity = numChunks * (metadataLength + chunkSize);
                         int lastChunkSize = compressedData.length % chunkSize;
-                        if(compressedData.length % chunkSize != 0) {
+                        if(lastChunkSize != 0) {
                                 numChunks++;
-                                bufferCapacity += 12 + lastChunkSize;
+                                bufferCapacity += (metadataLength + lastChunkSize);
                         }
                         ByteBuffer buffer = ByteBuffer.allocate(bufferCapacity);
+                        CRC32 checkSum = new CRC32();
                         for (int i = 0; i < numChunks; i++) {
                                 int offset = i * chunkSize;
-                                int length = Math.min(chunkSize, compressedData.length - offset);
+                                int remainingBytes = compressedData.length - offset;
+                                int length = Math.min(chunkSize, remainingBytes);
                                 byte[] chunkData = new byte[length];
                                 System.arraycopy(compressedData, offset, chunkData, 0, length);
                                 byte[] chunkType = new byte[] {73, 68, 65, 84};
-                                CRC32 checkSum = new CRC32();
+                                checkSum.reset();
                                 checkSum.update(chunkType);
                                 checkSum.update(chunkData);
                                 Chunk chunk = new Chunk(chunkType, chunkData, length, (int) checkSum.getValue());
                                 buffer.put(encodeChunk(chunk));
                         }
                         return buffer;
+                }
+        }
+
+        private void write_binary_file(String filename, byte[] data) {
+                try {
+                        FileOutputStream fos = new FileOutputStream(filename);
+                        fos.write(data);
+                        fos.close();
+                } catch (IOException e) {
+                        e.printStackTrace();
+                }
+        }
+
+        public static byte[] compress(byte[] input) {
+                try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                     DeflaterOutputStream dos = new DeflaterOutputStream(bos, new Deflater(Deflater.DEFAULT_COMPRESSION))) {
+
+                        dos.write(input);
+                        dos.finish();
+
+                        return bos.toByteArray();
+                } catch (Exception e) {
+                        e.printStackTrace();
+                        return null;
                 }
         }
 
