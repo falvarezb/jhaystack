@@ -6,6 +6,7 @@ import java.util.zip.CRC32;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 
+import static fjab.haystack.Util.testName;
 import static fjab.haystack.Util.write_test_output;
 
 public class PngEncoder {
@@ -62,9 +63,9 @@ public class PngEncoder {
                                 baos.write(imageData, i*imageSize.stride(), imageSize.stride());
                         }
                         byte[] filteredData = baos.toByteArray();
-                        write_test_output("filteredData", filteredData);
+                        write_test_output("filteredData", testName(destFile), filteredData);
                         byte[] compressedData = compress(filteredData);
-                        write_test_output("compressedData", compressedData);
+                        write_test_output("compressedData", testName(destFile), compressedData);
                         // split compressed data into IDAT chunks of at most 2^16 - 1 bytes
                         int chunkSize = 65535;
                         int numChunks = compressedData.length / chunkSize;

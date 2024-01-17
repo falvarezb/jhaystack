@@ -14,6 +14,7 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
 
+import static fjab.haystack.Util.testName;
 import static fjab.haystack.Util.write_test_output;
 
 public class PngDecoder {
@@ -150,12 +151,12 @@ public class PngDecoder {
         }
 
         byte[] decompressedIdatData = decompress2();
-        write_test_output("decompressedData", decompressedIdatData);
+        write_test_output("decompressedData", testName(sourceFile), decompressedIdatData);
         if(decompressedIdatData.length != (this.height * this.stride) + this.height) {
             throw new RuntimeException("Decompressed data length does not match expected length");
         }
         byte[] unfilteredData = unfilter(decompressedIdatData);
-        write_test_output("unfilteredData", unfilteredData);
+        write_test_output("unfilteredData", testName(sourceFile), unfilteredData);
         return unfilteredData;
     }
 

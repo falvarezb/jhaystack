@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class PngTest {
@@ -17,24 +18,33 @@ public class PngTest {
 
     /*
         Files meeting the following conditions should remain unchanged after decoding and encoding back
-        - without filter (filter_type == 0)
-        - size of the IDAT section is less than 2**16-1
+        - filter_type == 0 (no filter)
         - there is one and only one IDAT section
+        - size of the IDAT section is less than 2**16
      */
     @Test
     public void testFileTransformedIntoItself() throws IOException {
-        Png png = new PngDecoder("src/test/resources/event-bridge.png").decode();
-        new PngEncoder("src/test/resources/event-bridge-modified.png").encode(png);
-        assertFileEquals("src/test/resources/event-bridge.png", "src/test/resources/event-bridge-modified.png");
+        // test parameter
+        var testName = "event-bridge";
+
+        var originalTestFileName = testName + ".png";
+        var resultTestFileName = testName + "-modified.png";
+        var testFolderPath = Paths.get("src/test/resources",testName);
+        Png png = new PngDecoder(testFolderPath.resolve(originalTestFileName).toString()).decode();
+
+        var testOutputPath = testFolderPath.resolve("testOutput");
+        new PngEncoder(testOutputPath.resolve(resultTestFileName).toString()).encode(png);
+
+        assertFileEquals(testFolderPath.resolve(originalTestFileName), testOutputPath.resolve(resultTestFileName));
 
         //checking intermediate results
-        assertFileEquals("src/test/resources/compressed_data_bytes", "src/test/resources/testOutput/compressedData");
-        assertFileEquals("src/test/resources/decompressed_data_bytes", "src/test/resources/testOutput/decompressedData");
-        assertFileEquals("src/test/resources/filtered_data_bytes", "src/test/resources/testOutput/filteredData");
-        assertFileEquals("src/test/resources/unfiltered_data_bytes", "src/test/resources/testOutput/unfilteredData");
+        assertFileEquals(testFolderPath.resolve("compressed_data_bytes"), testOutputPath.resolve("compressedData"));
+        assertFileEquals(testFolderPath.resolve("decompressed_data_bytes"), testOutputPath.resolve("decompressedData"));
+        assertFileEquals(testFolderPath.resolve("filtered_data_bytes"), testOutputPath.resolve("filteredData"));
+        assertFileEquals(testFolderPath.resolve("unfiltered_data_bytes"), testOutputPath.resolve("unfilteredData"));
     }
 
-    private void assertFileEquals(String path1, String path2) throws IOException {
-        Assertions.assertArrayEquals(Files.readAllBytes(Paths.get(path1)), Files.readAllBytes(Paths.get(path2)));
+    private void assertFileEquals(Path path1, Path path2) throws IOException {
+        Assertions.assertArrayEquals(Files.readAllBytes(path1), Files.readAllBytes(path2));
     }
 }
