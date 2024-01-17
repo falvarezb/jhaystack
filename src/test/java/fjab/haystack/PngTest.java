@@ -24,9 +24,17 @@ public class PngTest {
      */
     @Test
     public void testFileTransformedIntoItself() throws IOException {
-        // test parameter
         var testName = "event-bridge";
+        runTestCase(testName);
+    }
 
+    @Test
+    public void testFileLambda() throws IOException {
+        var testName = "lambda";
+        runTestCase(testName);
+    }
+
+    private void runTestCase(String testName) throws IOException {
         var originalTestFileName = testName + ".png";
         var resultTestFileName = testName + "-modified.png";
         var testFolderPath = Paths.get("src/test/resources",testName);
@@ -35,13 +43,15 @@ public class PngTest {
         var testOutputPath = testFolderPath.resolve("testOutput");
         new PngEncoder(testOutputPath.resolve(resultTestFileName).toString()).encode(png);
 
+        checkIntermediateResults(testFolderPath, testOutputPath);
         assertFileEquals(testFolderPath.resolve(originalTestFileName), testOutputPath.resolve(resultTestFileName));
+    }
 
-        //checking intermediate results
-        assertFileEquals(testFolderPath.resolve("compressed_data_bytes"), testOutputPath.resolve("compressedData"));
+    private void checkIntermediateResults(Path testFolderPath, Path testOutputPath) throws IOException {
         assertFileEquals(testFolderPath.resolve("decompressed_data_bytes"), testOutputPath.resolve("decompressedData"));
-        assertFileEquals(testFolderPath.resolve("filtered_data_bytes"), testOutputPath.resolve("filteredData"));
         assertFileEquals(testFolderPath.resolve("unfiltered_data_bytes"), testOutputPath.resolve("unfilteredData"));
+        assertFileEquals(testFolderPath.resolve("filtered_data_bytes"), testOutputPath.resolve("filteredData"));
+        assertFileEquals(testFolderPath.resolve("compressed_data_bytes"), testOutputPath.resolve("compressedData"));
     }
 
     private void assertFileEquals(Path path1, Path path2) throws IOException {
