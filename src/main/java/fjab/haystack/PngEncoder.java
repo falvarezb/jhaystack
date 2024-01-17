@@ -2,12 +2,11 @@ package fjab.haystack;
 
 import java.io.*;
 import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.List;
 import java.util.zip.CRC32;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
-import java.util.zip.InflaterInputStream;
+
+import static fjab.haystack.Util.write_test_output;
 
 public class PngEncoder {
 
@@ -63,9 +62,9 @@ public class PngEncoder {
                                 baos.write(imageData, i*imageSize.stride(), imageSize.stride());
                         }
                         byte[] filteredData = baos.toByteArray();
-                        write_binary_file("src/test/resources/filteredData", filteredData);
+                        write_test_output("filteredData", filteredData);
                         byte[] compressedData = compress(filteredData);
-                        write_binary_file("src/test/resources/compressedData", compressedData);
+                        write_test_output("compressedData", compressedData);
                         // split compressed data into IDAT chunks of at most 2^16 - 1 bytes
                         int chunkSize = 65535;
                         int numChunks = compressedData.length / chunkSize;
@@ -95,15 +94,7 @@ public class PngEncoder {
                 }
         }
 
-        private void write_binary_file(String filename, byte[] data) {
-                try {
-                        FileOutputStream fos = new FileOutputStream(filename);
-                        fos.write(data);
-                        fos.close();
-                } catch (IOException e) {
-                        e.printStackTrace();
-                }
-        }
+
 
         public static byte[] compress(byte[] input) {
                 try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
