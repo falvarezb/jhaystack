@@ -11,11 +11,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.zip.CRC32;
 import java.util.zip.DataFormatException;
-import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
 
-import static fjab.haystack.Util.testName;
-import static fjab.haystack.Util.write_test_output;
+import static fjab.haystack.Util.*;
 
 public class PngDecoder {
 
@@ -150,7 +148,9 @@ public class PngDecoder {
             offset += chunk.length();
         }
 
-        byte[] decompressedIdatData = decompress2();
+        byte[] decompressedIdatData = decompress(this.idats.stream()
+                .map(idat -> (InputStream)new ByteArrayInputStream(idat.data()))
+                .toList());
         write_test_output("decompressedData", testName(sourceFile), decompressedIdatData);
         if(decompressedIdatData.length != (this.height * this.stride) + this.height) {
             throw new RuntimeException("Decompressed data length does not match expected length");
@@ -249,28 +249,5 @@ public class PngDecoder {
             return b;
         else
             return c;
-    }
-
-    private static byte[] decompress(byte[] data) throws IOException, DataFormatException {
-        Inflater inflater = new Inflater();
-        inflater.setInput(data);
-
-        try(ByteArrayOutputStream outputStream = new ByteArrayOutputStream(data.length)) {
-            byte[] buffer = new byte[1024];
-            while (!inflater.finished()) {
-                int count = inflater.inflate(buffer);
-                outputStream.write(buffer, 0, count);
-            }
-            return outputStream.toByteArray();
-        }
-    }
-
-    private byte[] decompress2() throws IOException {
-        List<InputStream> ins = this.idats.stream()
-                .map(idat -> (InputStream)new ByteArrayInputStream(idat.data()))
-                .toList();
-        var in0 = new SequenceInputStream(Collections.enumeration(ins));
-        var in1 = new InflaterInputStream(in0);
-        return in1.readAllBytes();
     }
 }

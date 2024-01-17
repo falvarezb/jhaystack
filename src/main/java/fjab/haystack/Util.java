@@ -1,9 +1,13 @@
 package fjab.haystack;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.List;
+import java.util.zip.Deflater;
+import java.util.zip.DeflaterOutputStream;
+import java.util.zip.InflaterInputStream;
 
 public class Util {
 
@@ -20,13 +24,19 @@ public class Util {
         return baseName(filename).replace("-modified", "");
     }
 
-//    public static void write_test_output(String filename, byte[] data) {
-//        try {
-//            FileOutputStream fos = new FileOutputStream("src/test/resources/testoutput/" + filename);
-//            fos.write(data);
-//            fos.close();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//    }
+    public static byte[] decompress(List<InputStream> ins) throws IOException {
+        return new InflaterInputStream(new SequenceInputStream(Collections.enumeration(ins))).readAllBytes();
+    }
+
+    public static byte[] compress(byte[] input) throws IOException {
+        try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
+             DeflaterOutputStream dos = new DeflaterOutputStream(bos, new Deflater(Deflater.DEFAULT_COMPRESSION))) {
+
+            dos.write(input);
+            dos.finish();
+            return bos.toByteArray();
+        }
+    }
+
+
 }

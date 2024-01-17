@@ -6,8 +6,7 @@ import java.util.zip.CRC32;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 
-import static fjab.haystack.Util.testName;
-import static fjab.haystack.Util.write_test_output;
+import static fjab.haystack.Util.*;
 
 public class PngEncoder {
 
@@ -97,19 +96,7 @@ public class PngEncoder {
 
 
 
-        public static byte[] compress(byte[] input) {
-                try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                     DeflaterOutputStream dos = new DeflaterOutputStream(bos, new Deflater(Deflater.DEFAULT_COMPRESSION))) {
 
-                        dos.write(input);
-                        dos.finish();
-
-                        return bos.toByteArray();
-                } catch (Exception e) {
-                        e.printStackTrace();
-                        return null;
-                }
-        }
 
 
 
