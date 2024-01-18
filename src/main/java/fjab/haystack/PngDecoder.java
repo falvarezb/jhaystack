@@ -161,21 +161,22 @@ public class PngDecoder {
     }
 
     /**
-     * Filtering concepts (https://www.w3.org/TR/png/#9Filters)
-     * Named filter bytes https://www.w3.org/TR/png/#table-named-filter-bytes:
-     * x: byte being filtered
-     * a: the byte corresponding to x in the pixel immediately before the pixel containing x
-     * b: the byte corresponding to x in the previous scanline
-     * c: the byte corresponding to b in the pixel immediately before the pixel containing b
-     * | c | b |
-     * | a | x |
+     * Filtering concepts (https://www.w3.org/TR/png/#9Filters) <br>
+     * Named filter bytes https://www.w3.org/TR/png/#table-named-filter-bytes: <br>
+     * - x: byte being filtered <br>
+     * - a: the byte corresponding to x in the pixel immediately before the pixel containing x <br>
+     * - b: the byte corresponding to x in the previous scanline <br>
+     * - c: the byte corresponding to b in the pixel immediately before the pixel containing b <br>
+     * Note: for any given byte, the corresponding byte to its left is the one offset by the number of bytes per pixel <br><br>
+     * | c | b | <br>
+     * | a | x | <br><br>
      *
-     * Filter types (https://www.w3.org/TR/png/#9-table91):
-     * 0: None
-     * 1: Sub
-     * 2: Up
-     * 3: Average
-     * 4: Paeth
+     * Filter types (https://www.w3.org/TR/png/#9-table91): <br>
+     * 0: None <br>
+     * 1: Sub <br>
+     * 2: Up <br>
+     * 3: Average <br>
+     * 4: Paeth <br>
      *
      * @param decompressedIdatData
      * @return
@@ -201,7 +202,7 @@ public class PngDecoder {
                     case 1 -> { //Sub
                         for (int j = 0; j < this.stride; j++) {
                             byte x = scanline[j];
-                            byte a = j < this.bytesPerPixel ? 0 : unfilteredData[j - this.bytesPerPixel];
+                            byte a = j < this.bytesPerPixel ? 0 : unfilteredData[j+(i*this.stride) - this.bytesPerPixel];
                             unfilteredData[j+(i*this.stride)] = (byte) (x + a);
                         }
                     }
@@ -215,7 +216,7 @@ public class PngDecoder {
                     case 3 -> {//Average
                         for (int j = 0; j < this.stride; j++) {
                             byte x = scanline[j];
-                            byte a = j < this.bytesPerPixel ? 0 : unfilteredData[j - this.bytesPerPixel];
+                            byte a = j < this.bytesPerPixel ? 0 : unfilteredData[j+(i*this.stride) - this.bytesPerPixel];
                             byte b = i == 0 ? 0 : previousRow[j];
                             unfilteredData[j+(i*this.stride)] = (byte) (x + (a + b) / 2);
                         }
@@ -223,7 +224,7 @@ public class PngDecoder {
                     case 4 -> { //Paeth
                         for (int j = 0; j < this.stride; j++) {
                             byte x = scanline[j];
-                            byte a = j < this.bytesPerPixel ? 0 : unfilteredData[j - this.bytesPerPixel];
+                            byte a = j < this.bytesPerPixel ? 0 : unfilteredData[j+(i*this.stride) - this.bytesPerPixel];
                             byte b = i == 0 ? 0 : previousRow[j];
                             byte c = j < this.bytesPerPixel || i == 0 ? 0 : previousRow[j - this.bytesPerPixel];
                             unfilteredData[j+(i*this.stride)] = (byte) (x + paethPredictor(a, b, c));
@@ -231,7 +232,8 @@ public class PngDecoder {
                     }
                     default -> throw new RuntimeException("Unsupported filter type: " + filterType);
                 }
-                System.arraycopy(scanline, 0, previousRow, 0, this.stride);
+                //System.arraycopy(scanline, 0, previousRow, 0, this.stride);
+                System.arraycopy(unfilteredData, i*this.stride, previousRow, 0, this.stride);
             }
             assert decompressedIdatData.length == unfilteredData.length + this.height;
             return unfilteredData;
@@ -239,10 +241,18 @@ public class PngDecoder {
     }
 
     private byte paethPredictor(byte a, byte b, byte c) {
-        int p = a + b - c;
-        int pa = Math.abs(p - a);
-        int pb = Math.abs(p - b);
-        int pc = Math.abs(p - c);
+//        int p = a + b - c;
+//        int pa = Math.abs(p - a);
+//        int pb = Math.abs(p - b);
+//        int pc = Math.abs(p - c);
+        int aInt = a & 0xFF;
+        int bInt = b & 0xFF;
+        int cInt = c & 0xFF;
+
+        int p = aInt + bInt - cInt;
+        int pa = Math.abs(p - aInt);
+        int pb = Math.abs(p - bInt);
+        int pc = Math.abs(p - cInt);
         if(pa <= pb && pa <= pc)
             return a;
         else if(pb <= pc)
