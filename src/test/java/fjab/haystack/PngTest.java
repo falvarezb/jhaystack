@@ -10,12 +10,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class PngTest {
-    @Test
-    public void testDecode() {
-        Png png = new PngDecoder("src/test/resources/srcImage.png").decode();
-        System.out.println(png);
-    }
-
     /*
         Files meeting the following conditions should remain unchanged after decoding and encoding back
         - filter_type == 0 (no filter)

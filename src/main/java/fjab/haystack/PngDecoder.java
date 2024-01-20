@@ -85,10 +85,6 @@ public class PngDecoder {
      * - Chunk data: the data bytes appropriate to the chunk type, if any<br>
      * - CRC: 32-bit CRC calculated on the preceding bytes in the chunk, including the chunk type field and chunk data fields,
      * but not including the length field. The CRC is always present, even for chunks containing no data
-     *
-     * @param byteBuffer
-     * @return
-     * @throws IOException
      */
     private Chunk decodeChunk(ByteBuffer byteBuffer) {
         int chunkLength = byteBuffer.getInt();
@@ -138,13 +134,6 @@ public class PngDecoder {
 
     private byte[] decodeIdatData() throws IOException {
         // concatenate all idat chunks
-        byte[] idatData = new byte[idats.stream().mapToInt(Chunk::length).sum()];
-        int offset = 0;
-        for(Chunk chunk : idats) {
-            System.arraycopy(chunk.data(), 0, idatData, offset, chunk.length());
-            offset += chunk.length();
-        }
-
         byte[] decompressedIdatData = decompress(this.idats.stream()
                 .map(idat -> (InputStream)new ByteArrayInputStream(idat.data()))
                 .toList());
