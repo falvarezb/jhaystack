@@ -16,12 +16,6 @@ import static fjab.haystack.Util.*;
 public class PngDecoder {
 
     static final byte[] PNG_SIGNATURE = new byte[] {-119, 80, 78, 71, 13, 10, 26, 10};
-    private final byte TRUECOLOUR = 2;
-    private final byte TRUECOLOUR_WITH_ALPHA = 6;
-    private final byte BIT_DEPTH = 8;
-    private final byte COMPRESSION_METHOD = 0;
-    private final byte FILTER_METHOD = 0;
-    private final byte INTERLACE_METHOD = 0;
 
     private int width; //in pixels
     private int height; //in pixels
@@ -114,22 +108,24 @@ public class PngDecoder {
         byte filterMethod = data[11];
         byte interlaceMethod = data[12];
 
-        if(compressionMethod != COMPRESSION_METHOD) {
+        if(compressionMethod != 0) {
             throw new RuntimeException("Compression method not supported");
         }
-        if(filterMethod != FILTER_METHOD) {
+        if(filterMethod != 0) {
             throw new RuntimeException("Filter method not supported");
         }
-        if(interlaceMethod != INTERLACE_METHOD) {
+        if(interlaceMethod != 0) {
             throw new RuntimeException("Interlace method not supported");
         }
-        if(bitDepth != BIT_DEPTH) {
+        if(bitDepth != 8) {
             throw new RuntimeException("Bit depth not supported");
         }
-        if(colorType != TRUECOLOUR && colorType != TRUECOLOUR_WITH_ALPHA) {
+        byte trueColour = 2;
+        byte truecolourWithAlpha = 6;
+        if(colorType != trueColour && colorType != truecolourWithAlpha) {
             throw new RuntimeException("Color type not supported");
         }
-        this.bytesPerPixel = colorType == TRUECOLOUR ? 3 : 4;
+        this.bytesPerPixel = colorType == trueColour ? 3 : 4;
         this.stride = this.bytesPerPixel * this.width;
         return new ImageSize(this.width, this.height, this.bytesPerPixel, this.stride);
     }
