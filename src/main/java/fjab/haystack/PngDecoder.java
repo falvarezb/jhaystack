@@ -60,12 +60,12 @@ public class PngDecoder {
                 else if(chunk.isIDAT())
                     this.idats.add(chunk);
             }
-            decodeIhdrData();
+            ImageSize imageSize = decodeIhdrData();
             return new Png(
                     this.ihdr,
                     this.idats,
                     this.iend,
-                    new ImageSize(this.width, this.height, this.bytesPerPixel, this.stride),
+                    imageSize,
                     decodeIdatData()
             );
 
@@ -103,7 +103,7 @@ public class PngDecoder {
         return new Chunk(chunkType, chunkData, chunkLength, chunkCrc);
     }
 
-    private void decodeIhdrData() {
+    private ImageSize decodeIhdrData() {
         byte[] data = ihdr.data();
         this.width = ByteBuffer.wrap(data, 0, 4).getInt();
         this.height = ByteBuffer.wrap(data, 4, 4).getInt();
@@ -130,6 +130,7 @@ public class PngDecoder {
         }
         this.bytesPerPixel = colorType == TRUECOLOUR ? 3 : 4;
         this.stride = this.bytesPerPixel * this.width;
+        return new ImageSize(this.width, this.height, this.bytesPerPixel, this.stride);
     }
 
     private byte[] decodeIdatData() throws IOException {
@@ -178,9 +179,7 @@ public class PngDecoder {
                 byte[] scanline = new byte[this.stride];
                 di.readFully(scanline);
                 switch (filterType) {
-                    case 0 -> { //None
-                        System.arraycopy(scanline, 0, unfilteredData, scanline_idx * this.stride, this.stride);
-                    }
+                    case 0 -> System.arraycopy(scanline, 0, unfilteredData, scanline_idx * this.stride, this.stride); //None
                     case 1 -> { //Sub
                         for (int byte_idx = 0; byte_idx < this.stride; byte_idx++) {
                             byte x = scanline[byte_idx];
