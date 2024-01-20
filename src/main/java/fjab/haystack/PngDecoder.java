@@ -7,11 +7,8 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.zip.CRC32;
-import java.util.zip.DataFormatException;
-import java.util.zip.InflaterInputStream;
 
 import static fjab.haystack.Util.*;
 
@@ -93,7 +90,7 @@ public class PngDecoder {
      * @return
      * @throws IOException
      */
-    private Chunk decodeChunk(ByteBuffer byteBuffer) throws IOException {
+    private Chunk decodeChunk(ByteBuffer byteBuffer) {
         int chunkLength = byteBuffer.getInt();
         byte[] chunkType = new byte[4];
         byteBuffer.get(chunkType);
@@ -139,7 +136,7 @@ public class PngDecoder {
         this.stride = this.bytesPerPixel * this.width;
     }
 
-    private byte[] decodeIdatData() throws DataFormatException, IOException {
+    private byte[] decodeIdatData() throws IOException {
         // concatenate all idat chunks
         byte[] idatData = new byte[idats.stream().mapToInt(Chunk::length).sum()];
         int offset = 0;
@@ -162,7 +159,7 @@ public class PngDecoder {
 
     /**
      * Filtering concepts (https://www.w3.org/TR/png/#9Filters) <br>
-     * Named filter bytes https://www.w3.org/TR/png/#table-named-filter-bytes: <br>
+     * Named filter bytes (https://www.w3.org/TR/png/#table-named-filter-bytes): <br>
      * - x: byte being filtered <br>
      * - a: the byte corresponding to x in the pixel immediately before the pixel containing x <br>
      * - b: the byte corresponding to x in the previous scanline <br>
@@ -183,61 +180,68 @@ public class PngDecoder {
      * @throws IOException
      */
     public byte[] unfilter(byte[] decompressedIdatData) throws IOException {
-//        byte[] row = new byte[1];
-//        row[0] = (byte) 240;
         try(DataInputStream di = new DataInputStream(new ByteArrayInputStream(decompressedIdatData))) {
             byte[] unfilteredData = new byte[this.height * this.stride];
 
             byte[] previousRow = new byte[this.stride];
-            for (int i = 0; i < this.height; i++) {
+            for (int scanline_idx = 0; scanline_idx < this.height; scanline_idx++) {
                 byte filterType = di.readByte();
                 byte[] scanline = new byte[this.stride];
                 di.readFully(scanline);
                 switch (filterType) {
                     case 0 -> { //None
-                        for (int j = 0; j < this.stride; j++) {
-                            unfilteredData[j+(i*this.stride)] = scanline[j];
-                        }
+                        System.arraycopy(scanline, 0, unfilteredData, scanline_idx * this.stride, this.stride);
                     }
                     case 1 -> { //Sub
-                        for (int j = 0; j < this.stride; j++) {
-                            byte x = scanline[j];
-                            byte a = j < this.bytesPerPixel ? 0 : unfilteredData[j+(i*this.stride) - this.bytesPerPixel];
-                            unfilteredData[j+(i*this.stride)] = (byte) (x + a);
+                        for (int byte_idx = 0; byte_idx < this.stride; byte_idx++) {
+                            byte x = scanline[byte_idx];
+                            byte a = reconA(scanline_idx, byte_idx, unfilteredData);
+                            unfilteredData[byte_idx+(scanline_idx*this.stride)] = (byte) (x + a);
                         }
                     }
                     case 2 -> { //Up
-                        for (int j = 0; j < this.stride; j++) {
-                            byte x = scanline[j];
-                            byte b = i == 0 ? 0 : previousRow[j];
-                            unfilteredData[j+(i*this.stride)] = (byte) (x + b);
+                        for (int byte_idx = 0; byte_idx < this.stride; byte_idx++) {
+                            byte x = scanline[byte_idx];
+                            byte b = reconB(scanline_idx, byte_idx, previousRow);
+                            unfilteredData[byte_idx+(scanline_idx*this.stride)] = (byte) (x + b);
                         }
                     }
                     case 3 -> {//Average
-                        for (int j = 0; j < this.stride; j++) {
-                            byte x = scanline[j];
-                            byte a = j < this.bytesPerPixel ? 0 : unfilteredData[j+(i*this.stride) - this.bytesPerPixel];
-                            byte b = i == 0 ? 0 : previousRow[j];
-                            unfilteredData[j+(i*this.stride)] = (byte) (x + (a + b) / 2);
+                        for (int byte_idx = 0; byte_idx < this.stride; byte_idx++) {
+                            byte x = scanline[byte_idx];
+                            byte a = reconA(scanline_idx, byte_idx, unfilteredData);
+                            byte b = reconB(scanline_idx, byte_idx, previousRow);
+                            unfilteredData[byte_idx+(scanline_idx*this.stride)] = (byte) (x + (a + b) / 2);
                         }
                     }
                     case 4 -> { //Paeth
-                        for (int j = 0; j < this.stride; j++) {
-                            byte x = scanline[j];
-                            byte a = j < this.bytesPerPixel ? 0 : unfilteredData[j+(i*this.stride) - this.bytesPerPixel];
-                            byte b = i == 0 ? 0 : previousRow[j];
-                            byte c = j < this.bytesPerPixel || i == 0 ? 0 : previousRow[j - this.bytesPerPixel];
-                            unfilteredData[j+(i*this.stride)] = (byte) (x + paethPredictor(a, b, c));
+                        for (int byte_idx = 0; byte_idx < this.stride; byte_idx++) {
+                            byte x = scanline[byte_idx];
+                            byte a = reconA(scanline_idx, byte_idx, unfilteredData);
+                            byte b = reconB(scanline_idx, byte_idx, previousRow);
+                            byte c = reconC(scanline_idx, byte_idx, previousRow);
+                            unfilteredData[byte_idx+(scanline_idx*this.stride)] = (byte) (x + paethPredictor(a, b, c));
                         }
                     }
                     default -> throw new RuntimeException("Unsupported filter type: " + filterType);
                 }
-                //System.arraycopy(scanline, 0, previousRow, 0, this.stride);
-                System.arraycopy(unfilteredData, i*this.stride, previousRow, 0, this.stride);
+                System.arraycopy(unfilteredData, scanline_idx*this.stride, previousRow, 0, this.stride);
             }
             assert decompressedIdatData.length == unfilteredData.length + this.height;
             return unfilteredData;
         }
+    }
+
+    private byte reconC(int scanline_idx, int byte_idx, byte[] previousRow) {
+        return byte_idx < this.bytesPerPixel || scanline_idx == 0 ? 0 : previousRow[byte_idx - this.bytesPerPixel];
+    }
+
+    private static byte reconB(int scanline_idx, int byte_idx, byte[] previousRow) {
+        return scanline_idx == 0 ? 0 : previousRow[byte_idx];
+    }
+
+    private byte reconA(int scanline_index, int byte_index_in_scanline, byte[] unfilteredData) {
+        return byte_index_in_scanline < this.bytesPerPixel ? 0 : unfilteredData[byte_index_in_scanline + (scanline_index * this.stride) - this.bytesPerPixel];
     }
 
     private byte paethPredictor(byte a, byte b, byte c) {
