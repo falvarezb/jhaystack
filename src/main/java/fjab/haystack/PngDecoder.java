@@ -1,5 +1,6 @@
 package fjab.haystack;
 
+import java.awt.*;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -66,7 +67,7 @@ public class PngDecoder {
                     this.idats,
                     this.iend,
                     imageSize,
-                    decodeIdatData()
+                    decodeIdatData(this.idats, imageSize)
             );
 
         } catch (Exception e) {
@@ -133,13 +134,13 @@ public class PngDecoder {
         return new ImageSize(this.width, this.height, this.bytesPerPixel, this.stride);
     }
 
-    private byte[] decodeIdatData() throws IOException {
+    private byte[] decodeIdatData(List<Chunk> idats, ImageSize imageSize) throws IOException {
         // concatenate all idat chunks
-        byte[] decompressedIdatData = decompress(this.idats.stream()
+        byte[] decompressedIdatData = decompress(idats.stream()
                 .map(idat -> (InputStream)new ByteArrayInputStream(idat.data()))
                 .toList());
         write_test_output("decompressedData", testName(sourceFile), decompressedIdatData);
-        if(decompressedIdatData.length != (this.height * this.stride) + this.height) {
+        if(decompressedIdatData.length != (imageSize.height() * imageSize.stride()) + imageSize.height()) {
             throw new RuntimeException("Decompressed data length does not match expected length");
         }
         byte[] unfilteredData = unfilter(decompressedIdatData);
