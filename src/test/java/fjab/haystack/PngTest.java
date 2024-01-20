@@ -34,6 +34,12 @@ public class PngTest {
         runTestCase(testName);
     }
 
+    @Test
+    public void testFileLargeImage() throws IOException {
+        var testName = "large-image";
+        runTestCase(testName);
+    }
+
     private void runTestCase(String testName) throws IOException {
         var originalTestFileName = testName + ".png";
         var resultTestFileName = testName + "-modified.png";

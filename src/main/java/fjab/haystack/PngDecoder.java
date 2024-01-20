@@ -241,10 +241,11 @@ public class PngDecoder {
     }
 
     private byte paethPredictor(byte a, byte b, byte c) {
-//        int p = a + b - c;
-//        int pa = Math.abs(p - a);
-//        int pb = Math.abs(p - b);
-//        int pc = Math.abs(p - c);
+        /*
+            In Java, the byte data type has a range from -128 to 127
+            However, in the context of this function, bytes are treated as unsigned and have a range from 0 to 255.
+            To fix this and avoid unexpected results due to overflow, byte values need to be converted to int in the range of 0 to 255.
+         */
         int aInt = a & 0xFF;
         int bInt = b & 0xFF;
         int cInt = c & 0xFF;
