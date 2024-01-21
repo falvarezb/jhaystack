@@ -15,11 +15,7 @@ import static fjab.haystack.Util.*;
 public class PngDecoder {
 
     static final byte[] PNG_SIGNATURE = new byte[] {-119, 80, 78, 71, 13, 10, 26, 10};
-    private Chunk ihdr;
-    private Chunk iend;
-    private List<Chunk> idats = new ArrayList<>();
-
-    private String sourceFile;
+    private final String sourceFile;
 
     public PngDecoder(String sourceFile) {
         this.sourceFile = sourceFile;
@@ -40,22 +36,25 @@ public class PngDecoder {
                 throw new RuntimeException("File is not a PNG file");
             }
 
+            Chunk ihdr = null;
+            Chunk iend = null;
+            List<Chunk> idats = new ArrayList<>();
             while (byteBuffer.hasRemaining()) {
                 Chunk chunk = decodeChunk(byteBuffer);
                 if(chunk.isIHDR())
-                    this.ihdr = chunk;
+                    ihdr = chunk;
                 else if(chunk.isIEND())
-                    this.iend = chunk;
+                    iend = chunk;
                 else if(chunk.isIDAT())
-                    this.idats.add(chunk);
+                    idats.add(chunk);
             }
-            ImageSize imageSize = decodeIhdrData();
+            ImageSize imageSize = decodeIhdrData(ihdr);
             return new Png(
-                    this.ihdr,
-                    this.idats,
-                    this.iend,
+                    ihdr,
+                    idats,
+                    iend,
                     imageSize,
-                    decodeIdatData(this.idats, imageSize)
+                    decodeIdatData(idats, imageSize)
             );
 
         } catch (Exception e) {
@@ -68,7 +67,7 @@ public class PngDecoder {
     }
 
     /**
-     * Chunk structure (https://www.w3.org/TR/png/#5Chunk-layout):<br>
+     * Chunk structure (<a href="https://www.w3.org/TR/png/#5Chunk-layout">Chunk layout</a>):<br>
      * - Length: 4-byte unsigned integer giving the number of bytes in the chunk's data field.<br>
      * - Chunk type: a sequence of 4 bytes defining the chunk type, e.g. for IHDR chunks, this sequence is 73 72 68 82.<br>
      * - Chunk data: the data bytes appropriate to the chunk type, if any<br>
@@ -92,7 +91,7 @@ public class PngDecoder {
         return new Chunk(chunkType, chunkData, chunkLength, chunkCrc);
     }
 
-    private ImageSize decodeIhdrData() {
+    private ImageSize decodeIhdrData(Chunk ihdr) {
         byte[] data = ihdr.data();
         int width = ByteBuffer.wrap(data, 0, 4).getInt();
         int height = ByteBuffer.wrap(data, 4, 4).getInt();
@@ -115,8 +114,8 @@ public class PngDecoder {
             throw new RuntimeException("Bit depth not supported");
         }
         byte trueColour = 2;
-        byte truecolourWithAlpha = 6;
-        if(colorType != trueColour && colorType != truecolourWithAlpha) {
+        byte trueColourWithAlpha = 6;
+        if(colorType != trueColour && colorType != trueColourWithAlpha) {
             throw new RuntimeException("Color type not supported");
         }
         int bytesPerPixel = colorType == trueColour ? 3 : 4;
@@ -139,8 +138,8 @@ public class PngDecoder {
     }
 
     /**
-     * Filtering concepts (https://www.w3.org/TR/png/#9Filters) <br>
-     * Named filter bytes (https://www.w3.org/TR/png/#table-named-filter-bytes): <br>
+     * Filtering concepts (<a href="https://www.w3.org/TR/png/#9Filters">Filters</a>) <br>
+     * Named filter bytes (<a href="https://www.w3.org/TR/png/#table-named-filter-bytes">Table: named filter bytes</a>): <br>
      * - x: byte being filtered <br>
      * - a: the byte corresponding to x in the pixel immediately before the pixel containing x <br>
      * - b: the byte corresponding to x in the previous scanline <br>
@@ -149,16 +148,12 @@ public class PngDecoder {
      * | c | b | <br>
      * | a | x | <br><br>
      *
-     * Filter types (https://www.w3.org/TR/png/#9-table91): <br>
+     * Filter types (<a href="https://www.w3.org/TR/png/#9-table91">Filter types</a>): <br>
      * 0: None <br>
      * 1: Sub <br>
      * 2: Up <br>
      * 3: Average <br>
      * 4: Paeth <br>
-     *
-     * @param decompressedIdatData
-     * @return
-     * @throws IOException
      */
     public byte[] unfilter(byte[] decompressedIdatData, ImageSize imageSize) throws IOException {
         int height = imageSize.height();
@@ -179,7 +174,7 @@ public class PngDecoder {
                         for (int byte_idx = 0; byte_idx < stride; byte_idx++) {
                             byte x = scanline[byte_idx];
                             byte a = reconA(scanline_idx, byte_idx, unfilteredData, bytesPerPixel, stride);
-                            unfilteredData[byte_idx+(offset)] = (byte) (x + a); // modulo 256 arithmetic
+                            unfilteredData[byte_idx+(offset)] = (byte) (x + a);
                         }
                     }
                     case 2 -> { //Up
