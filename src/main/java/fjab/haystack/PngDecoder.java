@@ -1,6 +1,5 @@
 package fjab.haystack;
 
-import java.awt.*;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -16,11 +15,6 @@ import static fjab.haystack.Util.*;
 public class PngDecoder {
 
     static final byte[] PNG_SIGNATURE = new byte[] {-119, 80, 78, 71, 13, 10, 26, 10};
-
-    private int width; //in pixels
-    private int height; //in pixels
-    private int bytesPerPixel;
-    private int stride;
     private Chunk ihdr;
     private Chunk iend;
     private List<Chunk> idats = new ArrayList<>();
@@ -100,8 +94,8 @@ public class PngDecoder {
 
     private ImageSize decodeIhdrData() {
         byte[] data = ihdr.data();
-        this.width = ByteBuffer.wrap(data, 0, 4).getInt();
-        this.height = ByteBuffer.wrap(data, 4, 4).getInt();
+        int width = ByteBuffer.wrap(data, 0, 4).getInt();
+        int height = ByteBuffer.wrap(data, 4, 4).getInt();
         byte bitDepth = data[8];
         byte colorType = data[9];
         byte compressionMethod = data[10];
@@ -125,9 +119,9 @@ public class PngDecoder {
         if(colorType != trueColour && colorType != truecolourWithAlpha) {
             throw new RuntimeException("Color type not supported");
         }
-        this.bytesPerPixel = colorType == trueColour ? 3 : 4;
-        this.stride = this.bytesPerPixel * this.width;
-        return new ImageSize(this.width, this.height, this.bytesPerPixel, this.stride);
+        int bytesPerPixel = colorType == trueColour ? 3 : 4;
+        int stride = bytesPerPixel * width;
+        return new ImageSize(width, height, bytesPerPixel, stride);
     }
 
     private byte[] decodeIdatData(List<Chunk> idats, ImageSize imageSize) throws IOException {
@@ -139,7 +133,7 @@ public class PngDecoder {
         if(decompressedIdatData.length != (imageSize.height() * imageSize.stride()) + imageSize.height()) {
             throw new RuntimeException("Decompressed data length does not match expected length");
         }
-        byte[] unfilteredData = unfilter(decompressedIdatData);
+        byte[] unfilteredData = unfilter(decompressedIdatData, imageSize);
         write_test_output("unfilteredData", testName(sourceFile), unfilteredData);
         return unfilteredData;
     }
@@ -166,67 +160,71 @@ public class PngDecoder {
      * @return
      * @throws IOException
      */
-    public byte[] unfilter(byte[] decompressedIdatData) throws IOException {
+    public byte[] unfilter(byte[] decompressedIdatData, ImageSize imageSize) throws IOException {
+        int height = imageSize.height();
+        int stride = imageSize.stride();
+        int bytesPerPixel = imageSize.bytesPerPixel();
         try(DataInputStream di = new DataInputStream(new ByteArrayInputStream(decompressedIdatData))) {
-            byte[] unfilteredData = new byte[this.height * this.stride];
+            byte[] unfilteredData = new byte[height * stride];
 
-            byte[] previousRow = new byte[this.stride];
-            for (int scanline_idx = 0; scanline_idx < this.height; scanline_idx++) {
+            byte[] previousRow = new byte[stride];
+            for (int scanline_idx = 0; scanline_idx < height; scanline_idx++) {
+                int offset = scanline_idx * stride;
                 byte filterType = di.readByte();
-                byte[] scanline = new byte[this.stride];
+                byte[] scanline = new byte[stride];
                 di.readFully(scanline);
                 switch (filterType) {
-                    case 0 -> System.arraycopy(scanline, 0, unfilteredData, scanline_idx * this.stride, this.stride); //None
+                    case 0 -> System.arraycopy(scanline, 0, unfilteredData, scanline_idx * stride, stride); //None
                     case 1 -> { //Sub
-                        for (int byte_idx = 0; byte_idx < this.stride; byte_idx++) {
+                        for (int byte_idx = 0; byte_idx < stride; byte_idx++) {
                             byte x = scanline[byte_idx];
-                            byte a = reconA(scanline_idx, byte_idx, unfilteredData);
-                            unfilteredData[byte_idx+(scanline_idx*this.stride)] = (byte) (x + a);
+                            byte a = reconA(scanline_idx, byte_idx, unfilteredData, bytesPerPixel, stride);
+                            unfilteredData[byte_idx+(offset)] = (byte) (x + a); // modulo 256 arithmetic
                         }
                     }
                     case 2 -> { //Up
-                        for (int byte_idx = 0; byte_idx < this.stride; byte_idx++) {
+                        for (int byte_idx = 0; byte_idx < stride; byte_idx++) {
                             byte x = scanline[byte_idx];
                             byte b = reconB(scanline_idx, byte_idx, previousRow);
-                            unfilteredData[byte_idx+(scanline_idx*this.stride)] = (byte) (x + b);
+                            unfilteredData[byte_idx+(offset)] = (byte) (x + b);
                         }
                     }
                     case 3 -> {//Average
-                        for (int byte_idx = 0; byte_idx < this.stride; byte_idx++) {
+                        for (int byte_idx = 0; byte_idx < stride; byte_idx++) {
                             byte x = scanline[byte_idx];
-                            byte a = reconA(scanline_idx, byte_idx, unfilteredData);
+                            byte a = reconA(scanline_idx, byte_idx, unfilteredData, bytesPerPixel, stride);
                             byte b = reconB(scanline_idx, byte_idx, previousRow);
-                            unfilteredData[byte_idx+(scanline_idx*this.stride)] = (byte) (x + (a + b) / 2);
+                            unfilteredData[byte_idx+(offset)] = (byte) (x + (a + b) / 2);
                         }
                     }
                     case 4 -> { //Paeth
-                        for (int byte_idx = 0; byte_idx < this.stride; byte_idx++) {
+                        for (int byte_idx = 0; byte_idx < stride; byte_idx++) {
                             byte x = scanline[byte_idx];
-                            byte a = reconA(scanline_idx, byte_idx, unfilteredData);
+                            byte a = reconA(scanline_idx, byte_idx, unfilteredData, bytesPerPixel, stride);
                             byte b = reconB(scanline_idx, byte_idx, previousRow);
-                            byte c = reconC(scanline_idx, byte_idx, previousRow);
-                            unfilteredData[byte_idx+(scanline_idx*this.stride)] = (byte) (x + paethPredictor(a, b, c));
+                            byte c = reconC(scanline_idx, byte_idx, previousRow, bytesPerPixel);
+                            unfilteredData[byte_idx+(offset)] = (byte) (x + paethPredictor(a, b, c));
                         }
                     }
                     default -> throw new RuntimeException("Unsupported filter type: " + filterType);
                 }
-                System.arraycopy(unfilteredData, scanline_idx*this.stride, previousRow, 0, this.stride);
+                System.arraycopy(unfilteredData, offset, previousRow, 0, stride);
             }
-            assert decompressedIdatData.length == unfilteredData.length + this.height;
+            assert decompressedIdatData.length == unfilteredData.length + height;
             return unfilteredData;
         }
     }
 
-    private byte reconC(int scanline_idx, int byte_idx, byte[] previousRow) {
-        return byte_idx < this.bytesPerPixel || scanline_idx == 0 ? 0 : previousRow[byte_idx - this.bytesPerPixel];
+    private byte reconC(int scanline_idx, int byte_idx, byte[] previousRow, int bytesPerPixel) {
+        return byte_idx < bytesPerPixel || scanline_idx == 0 ? 0 : previousRow[byte_idx - bytesPerPixel];
     }
 
     private static byte reconB(int scanline_idx, int byte_idx, byte[] previousRow) {
         return scanline_idx == 0 ? 0 : previousRow[byte_idx];
     }
 
-    private byte reconA(int scanline_index, int byte_index_in_scanline, byte[] unfilteredData) {
-        return byte_index_in_scanline < this.bytesPerPixel ? 0 : unfilteredData[byte_index_in_scanline + (scanline_index * this.stride) - this.bytesPerPixel];
+    private byte reconA(int scanline_index, int byte_index_in_scanline, byte[] unfilteredData, int bytesPerPixel, int stride) {
+        return byte_index_in_scanline < bytesPerPixel ? 0 : unfilteredData[byte_index_in_scanline + (scanline_index * stride) - bytesPerPixel];
     }
 
     private byte paethPredictor(byte a, byte b, byte c) {
