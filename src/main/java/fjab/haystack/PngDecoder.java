@@ -22,7 +22,7 @@ public class PngDecoder {
     }
 
 
-    public Png decode() {
+    public Png decode() throws IOException {
         // read first 8 bytes to check if it is a PNG file
         try(FileChannel channel = FileChannel.open(Paths.get(sourceFile), StandardOpenOption.READ)) {
             int fileSize = (int) channel.size();
@@ -56,14 +56,7 @@ public class PngDecoder {
                     imageSize,
                     decodeIdatData(idats, imageSize)
             );
-
-        } catch (Exception e) {
-            e.printStackTrace();
         }
-
-
-
-        return null;
     }
 
     /**
