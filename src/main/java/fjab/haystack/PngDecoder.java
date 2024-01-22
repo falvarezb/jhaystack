@@ -2,11 +2,7 @@ package fjab.haystack;
 
 import java.io.*;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.zip.CRC32;
 
@@ -14,7 +10,6 @@ import static fjab.haystack.Util.*;
 
 public class PngDecoder {
 
-    static final byte[] PNG_SIGNATURE = new byte[] {-119, 80, 78, 71, 13, 10, 26, 10};
     private final String sourceFile;
 
     public PngDecoder(String sourceFile) {
@@ -23,41 +18,31 @@ public class PngDecoder {
 
 
     public Png decode() throws IOException {
-        // read first 8 bytes to check if it is a PNG file
-        try(FileChannel channel = FileChannel.open(Paths.get(sourceFile), StandardOpenOption.READ)) {
-            int fileSize = (int) channel.size();
-            ByteBuffer byteBuffer = ByteBuffer.allocate(fileSize);
-            channel.read(byteBuffer);
-            byteBuffer.flip();
+        ByteBuffer byteBuffer = loadFileIntoByteBuffer(sourceFile);
 
-            byte[] signature = new byte[8];
-            byteBuffer.get(signature);
-            if(!Arrays.equals(signature, PNG_SIGNATURE)) {
-                throw new RuntimeException("File is not a PNG file");
-            }
+        checkPngSignature(byteBuffer);
 
-            Chunk ihdr = null;
-            Chunk iend = null;
-            List<Chunk> idats = new ArrayList<>();
-            while (byteBuffer.hasRemaining()) {
-                Chunk chunk = decodeChunk(byteBuffer);
-                if(chunk.isIHDR())
-                    ihdr = chunk;
-                else if(chunk.isIEND())
-                    iend = chunk;
-                else if(chunk.isIDAT())
-                    idats.add(chunk);
-            }
-            assert ihdr != null;
-            ImageSize imageSize = decodeIhdrData(ihdr);
-            return new Png(
-                    ihdr,
-                    idats,
-                    iend,
-                    imageSize,
-                    decodeIdatData(idats, imageSize)
-            );
+        Chunk ihdr = null;
+        Chunk iend = null;
+        List<Chunk> idats = new ArrayList<>();
+        while (byteBuffer.hasRemaining()) {
+            Chunk chunk = decodeChunk(byteBuffer);
+            if(chunk.isIHDR())
+                ihdr = chunk;
+            else if(chunk.isIEND())
+                iend = chunk;
+            else if(chunk.isIDAT())
+                idats.add(chunk);
         }
+        assert ihdr != null;
+        ImageSize imageSize = decodeIhdrData(ihdr);
+        return new Png(
+                ihdr,
+                idats,
+                iend,
+                imageSize,
+                decodeIdatData(idats, imageSize)
+        );
     }
 
     /**
@@ -204,7 +189,7 @@ public class PngDecoder {
         }
     }
 
-    private byte reconC(int scanline_idx, int byte_idx, byte[] previousRow, int bytesPerPixel) {
+    private static byte reconC(int scanline_idx, int byte_idx, byte[] previousRow, int bytesPerPixel) {
         return byte_idx < bytesPerPixel || scanline_idx == 0 ? 0 : previousRow[byte_idx - bytesPerPixel];
     }
 
@@ -212,11 +197,11 @@ public class PngDecoder {
         return scanline_idx == 0 ? 0 : previousRow[byte_idx];
     }
 
-    private byte reconA(int scanline_index, int byte_index_in_scanline, byte[] unfilteredData, int bytesPerPixel, int stride) {
+    private static byte reconA(int scanline_index, int byte_index_in_scanline, byte[] unfilteredData, int bytesPerPixel, int stride) {
         return byte_index_in_scanline < bytesPerPixel ? 0 : unfilteredData[byte_index_in_scanline + (scanline_index * stride) - bytesPerPixel];
     }
 
-    private byte paethPredictor(byte a, byte b, byte c) {
+    private static byte paethPredictor(byte a, byte b, byte c) {
         /*
             In Java, the byte data type has a range from -128 to 127
             However, in the context of this function, bytes are treated as unsigned and have a range from 0 to 255.

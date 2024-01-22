@@ -19,7 +19,7 @@ public class PngEncoder {
                         DataOutputStream dos = new DataOutputStream(baos);
                         FileOutputStream fos = new FileOutputStream(destFile)
                 ) {
-                        dos.write(PngDecoder.PNG_SIGNATURE);
+                        dos.write(PNG_SIGNATURE);
                         dos.write(encodeChunk(png.ihdr()).array());
                         dos.write(encodeIdat(png.imageSize(), png.imageData()).array());
                         dos.write(encodeChunk(png.iend()).array());
