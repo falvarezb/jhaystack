@@ -6,8 +6,9 @@ package fjab.haystack;
  */
 public class App
 {
-    public static void main( String[] args )
-    {
-        System.out.println( "Hello World!" );
+    public static boolean testMode = true;
+    public static void main( String[] args ) {
+        testMode = Boolean.parseBoolean(args[0]);
+        System.out.println("testMode: " + testMode);
     }
 }

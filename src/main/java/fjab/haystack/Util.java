@@ -18,7 +18,9 @@ public class Util {
     static final byte[] PNG_SIGNATURE = new byte[] {-119, 80, 78, 71, 13, 10, 26, 10};
 
     public static void write_test_output(String filename, String additionalPathElement, byte[] data) throws IOException {
-        Files.write(Paths.get("src/test/resources", additionalPathElement, "testOutput", filename), data);
+        if(App.testMode) {
+            Files.write(Paths.get("src/test/resources", additionalPathElement, "testOutput", filename), data);
+        }
     }
 
     private static String baseName(String filename) {
