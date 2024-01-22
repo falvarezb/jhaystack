@@ -8,6 +8,10 @@ import static fjab.haystack.Util.*;
 
 public class PngEncoder {
 
+        private final int chunkLengthLength = 4;
+        private final int chunkTypeLength = 4;
+        private final int chunkCrcLength = 4;
+        private final int chunkMetadataLength = chunkLengthLength + chunkTypeLength + chunkCrcLength;
         private final String destFile;
         public PngEncoder(String destFile) {
                 this.destFile = destFile;
@@ -40,8 +44,7 @@ public class PngEncoder {
          * but not including the length field. The CRC is always present, even for chunks containing no data
          */
         private ByteBuffer encodeChunk(Chunk chunk) {
-                var metadataLength = 4 + 4 + 4;
-                ByteBuffer buffer = ByteBuffer.allocate(metadataLength + chunk.length());
+                ByteBuffer buffer = ByteBuffer.allocate(chunkMetadataLength + chunk.length());
                 buffer.putInt(chunk.length());
                 buffer.put(chunk.type());
                 buffer.put(chunk.data());
@@ -66,12 +69,11 @@ public class PngEncoder {
                         // split compressed data into IDAT chunks of at most 2^16 - 1 bytes
                         int chunkSize = 65535;
                         int numChunks = compressedData.length / chunkSize;
-                        var metadataLength = 4 + 4 + 4;
-                        int bufferCapacity = numChunks * (metadataLength + chunkSize);
+                        int bufferCapacity = numChunks * (chunkMetadataLength + chunkSize);
                         int lastChunkSize = compressedData.length % chunkSize;
                         if(lastChunkSize != 0) {
                                 numChunks++;
-                                bufferCapacity += (metadataLength + lastChunkSize);
+                                bufferCapacity += (chunkMetadataLength + lastChunkSize);
                         }
                         ByteBuffer buffer = ByteBuffer.allocate(bufferCapacity);
                         CRC32 checkSum = new CRC32();

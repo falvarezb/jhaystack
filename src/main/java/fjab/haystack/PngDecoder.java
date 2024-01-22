@@ -103,17 +103,19 @@ public class PngDecoder {
     }
 
     private byte[] decodeIdatData(List<Chunk> idats, ImageSize imageSize) throws IOException {
-        // concatenate all idat chunks
-        byte[] decompressedIdatData = decompress(idats.stream()
-                .map(idat -> (InputStream)new ByteArrayInputStream(idat.data()))
-                .toList());
+        byte[] decompressedIdatData = decompress(concatenateIdatChunks(idats));
+        assert decompressedIdatData.length == (imageSize.height() * imageSize.stride()) + imageSize.height() : "Decompressed data length does not match expected length";
         write_test_output("decompressedData", testName(sourceFile), decompressedIdatData);
-        if(decompressedIdatData.length != (imageSize.height() * imageSize.stride()) + imageSize.height()) {
-            throw new RuntimeException("Decompressed data length does not match expected length");
-        }
+
         byte[] unfilteredData = unfilter(decompressedIdatData, imageSize);
         write_test_output("unfilteredData", testName(sourceFile), unfilteredData);
         return unfilteredData;
+    }
+
+    private static List<InputStream> concatenateIdatChunks(List<Chunk> idats) {
+        return idats.stream()
+                .map(idat -> (InputStream) new ByteArrayInputStream(idat.data()))
+                .toList();
     }
 
     /**
