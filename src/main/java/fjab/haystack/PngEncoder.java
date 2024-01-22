@@ -3,14 +3,12 @@ package fjab.haystack;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.util.zip.CRC32;
-import java.util.zip.Deflater;
-import java.util.zip.DeflaterOutputStream;
 
 import static fjab.haystack.Util.*;
 
 public class PngEncoder {
 
-        private String destFile;
+        private final String destFile;
         public PngEncoder(String destFile) {
                 this.destFile = destFile;
         }
@@ -34,7 +32,7 @@ public class PngEncoder {
         }
 
         /**
-         * Chunk structure (https://www.w3.org/TR/png/#5Chunk-layout):
+         * Chunk structure (<a href="https://www.w3.org/TR/png/#5Chunk-layout">Chunk layout</a>):
          * Length: 4-byte unsigned integer giving the number of bytes in the chunk's data field.
          * Chunk type: a sequence of 4 bytes defining the chunk type, e.g. for IHDR chunks, this sequence is 73 72 68 82.
          * Chunk data: the data bytes appropriate to the chunk type, if any

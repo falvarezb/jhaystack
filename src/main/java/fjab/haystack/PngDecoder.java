@@ -48,6 +48,7 @@ public class PngDecoder {
                 else if(chunk.isIDAT())
                     idats.add(chunk);
             }
+            assert ihdr != null;
             ImageSize imageSize = decodeIhdrData(ihdr);
             return new Png(
                     ihdr,
