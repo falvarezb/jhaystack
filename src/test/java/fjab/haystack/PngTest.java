@@ -45,7 +45,6 @@ public class PngTest {
         new PngEncoder(testOutputPath.resolve(resultTestFileName).toString()).encode(png);
 
         checkIntermediateResults(testFolderPath, testOutputPath);
-        //assertFileEquals(testFolderPath.resolve(originalTestFileName), testOutputPath.resolve(resultTestFileName));
         assertFileEquals(testFolderPath.resolve(resultTestFileName), testOutputPath.resolve(resultTestFileName));
     }
 
