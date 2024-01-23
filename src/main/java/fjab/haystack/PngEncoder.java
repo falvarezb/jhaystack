@@ -68,18 +68,15 @@ public class PngEncoder {
                         write_test_output("compressedData", testName(destFile), compressedData);
                         // split compressed data into IDAT chunks of at most 2^16 - 1 bytes
                         int chunkSize = 65535;
-                        int numChunks = compressedData.length / chunkSize;
-                        int bufferCapacity = numChunks * (chunkMetadataLength + chunkSize);
-                        int lastChunkSize = compressedData.length % chunkSize;
-                        if(lastChunkSize != 0) {
-                                numChunks++;
-                                bufferCapacity += (chunkMetadataLength + lastChunkSize);
-                        }
-                        return splitDataIntoIdatChunks(numChunks, chunkSize, compressedData, new CRC32(), ByteBuffer.allocate(bufferCapacity));
+                        return splitDataIntoIdatChunks(chunkSize, compressedData);
                 }
         }
 
-        private ByteBuffer splitDataIntoIdatChunks(int numChunks, int chunkSize, byte[] compressedData, CRC32 checkSum, ByteBuffer buffer) {
+        private ByteBuffer splitDataIntoIdatChunks(int chunkSize, byte[] compressedData) {
+                CRC32 checkSum = new CRC32();
+                int numChunks = (int)Math.ceil(compressedData.length / (double)chunkSize);
+                int bufferCapacity = numChunks * chunkMetadataLength + compressedData.length;
+                ByteBuffer buffer = ByteBuffer.allocate(bufferCapacity);
                 for (int i = 0; i < numChunks; i++) {
                         int offset = i * chunkSize;
                         int remainingBytes = compressedData.length - offset;
