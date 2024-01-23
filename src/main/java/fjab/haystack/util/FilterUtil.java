@@ -50,24 +50,24 @@ public class FilterUtil {
 
             byte[] previousRow = new byte[stride];
             for (int scanline_idx = 0; scanline_idx < height; scanline_idx++) {
-                int offset = scanline_idx * stride;
+                int unfilteredDataOffset = scanline_idx * stride;
                 byte filterType = di.readByte();
                 byte[] scanline = new byte[stride];
                 di.readFully(scanline);
                 switch (filterType) {
-                    case 0 -> System.arraycopy(scanline, 0, unfilteredData, scanline_idx * stride, stride); //None
+                    case 0 -> System.arraycopy(scanline, 0, unfilteredData, unfilteredDataOffset, stride); //None
                     case 1 -> { //Sub
                         for (int byte_idx = 0; byte_idx < stride; byte_idx++) {
                             byte x = scanline[byte_idx];
                             byte a = reconA(scanline_idx, byte_idx, unfilteredData, bytesPerPixel, stride);
-                            unfilteredData[byte_idx + offset] = (byte) (x + a);
+                            unfilteredData[byte_idx + unfilteredDataOffset] = (byte) (x + a);
                         }
                     }
                     case 2 -> { //Up
                         for (int byte_idx = 0; byte_idx < stride; byte_idx++) {
                             byte x = scanline[byte_idx];
                             byte b = reconB(scanline_idx, byte_idx, previousRow);
-                            unfilteredData[byte_idx + offset] = (byte) (x + b);
+                            unfilteredData[byte_idx + unfilteredDataOffset] = (byte) (x + b);
                         }
                     }
                     case 3 -> {//Average
@@ -83,7 +83,7 @@ public class FilterUtil {
                              */
                             int aInt = a & 0xFF;
                             int bInt = b & 0xFF;
-                            unfilteredData[byte_idx + offset] = (byte) (x + (aInt + bInt) / 2);
+                            unfilteredData[byte_idx + unfilteredDataOffset] = (byte) (x + (aInt + bInt) / 2);
                         }
                     }
                     case 4 -> { //Paeth
@@ -92,12 +92,12 @@ public class FilterUtil {
                             byte a = reconA(scanline_idx, byte_idx, unfilteredData, bytesPerPixel, stride);
                             byte b = reconB(scanline_idx, byte_idx, previousRow);
                             byte c = reconC(scanline_idx, byte_idx, previousRow, bytesPerPixel);
-                            unfilteredData[byte_idx + offset] = (byte) (x + paethPredictor(a, b, c));
+                            unfilteredData[byte_idx + unfilteredDataOffset] = (byte) (x + paethPredictor(a, b, c));
                         }
                     }
                     default -> throw new RuntimeException("Unsupported filter type: " + filterType);
                 }
-                System.arraycopy(unfilteredData, offset, previousRow, 0, stride);
+                System.arraycopy(unfilteredData, unfilteredDataOffset, previousRow, 0, stride);
             }
             assert decompressedIdatData.length == unfilteredData.length + height;
             return unfilteredData;
