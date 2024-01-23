@@ -45,7 +45,7 @@ public class PngDecoder {
                 decodeIdatData(idats, imageSize)
         );
     }
-    
+
     private Chunk decodeChunk(ByteBuffer byteBuffer, CRC32 checkSum) {
         int chunkLength = byteBuffer.getInt();
         byte[] chunkType = new byte[4];

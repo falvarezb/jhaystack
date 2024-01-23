@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 import java.util.zip.CRC32;
 
 import static fjab.haystack.Chunk.CHUNK_METADATA_LENGTH;
+import static fjab.haystack.Chunk.IDAT_SIGNATURE;
 import static fjab.haystack.Util.*;
 
 public class PngEncoder {
@@ -26,14 +27,6 @@ public class PngEncoder {
                 }
         }
 
-        /**
-         * Chunk structure (<a href="https://www.w3.org/TR/png/#5Chunk-layout">Chunk layout</a>):
-         * Length: 4-byte unsigned integer giving the number of bytes in the chunk's data field.
-         * Chunk type: a sequence of 4 bytes defining the chunk type, e.g. for IHDR chunks, this sequence is 73 72 68 82.
-         * Chunk data: the data bytes appropriate to the chunk type, if any
-         * CRC: 32-bit CRC calculated on the preceding bytes in the chunk, including the chunk type field and chunk data fields,
-         * but not including the length field. The CRC is always present, even for chunks containing no data
-         */
         private ByteBuffer encodeChunk(Chunk chunk) {
                 ByteBuffer buffer = ByteBuffer.allocate(CHUNK_METADATA_LENGTH + chunk.length());
                 buffer.putInt(chunk.length());
@@ -55,6 +48,9 @@ public class PngEncoder {
 
         }
 
+        /**
+         * Apply filterType = 0 (no filter) to each scanline
+         */
         private byte[] filter(ImageSize imageSize, byte[] imageData) throws IOException {
                 try(ByteArrayOutputStream baos = new ByteArrayOutputStream((imageSize.stride() + 1) + imageSize.height())) {
                         byte filterType = 0;
@@ -71,7 +67,7 @@ public class PngEncoder {
                 int numChunks = (int)Math.ceil(compressedData.length / (double)chunkSize);
                 int bufferCapacity = numChunks * CHUNK_METADATA_LENGTH + compressedData.length;
                 ByteBuffer buffer = ByteBuffer.allocate(bufferCapacity);
-                byte[] chunkType = Chunk.IDAT_SIGNATURE;
+                byte[] chunkType = IDAT_SIGNATURE;
                 for (int i = 0; i < numChunks; i++) {
                         int offset = i * chunkSize;
                         int remainingBytes = compressedData.length - offset;
