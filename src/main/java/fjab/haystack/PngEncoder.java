@@ -1,6 +1,5 @@
 package fjab.haystack;
 
-import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -8,7 +7,10 @@ import java.util.zip.CRC32;
 
 import static fjab.haystack.Chunk.CHUNK_METADATA_LENGTH;
 import static fjab.haystack.Chunk.IDAT_SIGNATURE;
-import static fjab.haystack.Util.*;
+import static fjab.haystack.FilterUtil.filter;
+import static fjab.haystack.Png.PNG_SIGNATURE;
+import static fjab.haystack.TestUtil.testName;
+import static fjab.haystack.TestUtil.write_test_output;
 
 public class PngEncoder {
 
@@ -43,26 +45,12 @@ public class PngEncoder {
     private ByteBuffer encodeIdat(ImageSize imageSize, byte[] imageData) throws IOException {
         byte[] filteredData = filter(imageSize, imageData);
         write_test_output("filteredData", testName(destFile), filteredData);
-        byte[] compressedData = compress(filteredData);
+        byte[] compressedData = CompressUtil.compress(filteredData);
         write_test_output("compressedData", testName(destFile), compressedData);
         // split compressed data into IDAT chunks of at most 2^16 - 1 bytes
         int chunkSize = 65535;
         return splitDataIntoIdatChunks(chunkSize, compressedData);
 
-    }
-
-    /**
-     * Apply filterType = 0 (no filter) to each scanline
-     */
-    private byte[] filter(ImageSize imageSize, byte[] imageData) throws IOException {
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream((imageSize.stride() + 1) + imageSize.height())) {
-            byte filterType = 0;
-            for (int i = 0; i < imageSize.height(); i++) {
-                baos.write(filterType);
-                baos.write(imageData, i * imageSize.stride(), imageSize.stride());
-            }
-            return baos.toByteArray();
-        }
     }
 
     private ByteBuffer splitDataIntoIdatChunks(int chunkSize, byte[] compressedData) {
