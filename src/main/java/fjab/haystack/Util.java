@@ -1,6 +1,9 @@
 package fjab.haystack;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.SequenceInputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -15,10 +18,10 @@ import java.util.zip.InflaterInputStream;
 
 public class Util {
 
-    static final byte[] PNG_SIGNATURE = new byte[] {-119, 80, 78, 71, 13, 10, 26, 10};
+    static final byte[] PNG_SIGNATURE = new byte[]{-119, 80, 78, 71, 13, 10, 26, 10};
 
     public static void write_test_output(String filename, String additionalPathElement, byte[] data) throws IOException {
-        if(App.testMode) {
+        if (App.testMode) {
             Files.write(Paths.get("src/test/resources", additionalPathElement, "testOutput", filename), data);
         }
     }
@@ -50,13 +53,13 @@ public class Util {
     static void checkPngSignature(ByteBuffer byteBuffer) {
         byte[] signature = new byte[8];
         byteBuffer.get(signature);
-        if(!Arrays.equals(signature, PNG_SIGNATURE)) {
+        if (!Arrays.equals(signature, PNG_SIGNATURE)) {
             throw new RuntimeException("File is not a PNG file");
         }
     }
 
     static ByteBuffer loadFileIntoByteBuffer(String sourceFile) throws IOException {
-        try(FileChannel channel = FileChannel.open(Paths.get(sourceFile), StandardOpenOption.READ)) {
+        try (FileChannel channel = FileChannel.open(Paths.get(sourceFile), StandardOpenOption.READ)) {
             int fileSize = (int) channel.size();
             ByteBuffer byteBuffer = ByteBuffer.allocate(fileSize);
             channel.read(byteBuffer);

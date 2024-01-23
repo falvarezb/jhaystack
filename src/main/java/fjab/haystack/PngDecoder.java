@@ -1,6 +1,9 @@
 package fjab.haystack;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,11 +31,11 @@ public class PngDecoder {
         CRC32 checkSum = new CRC32();
         while (byteBuffer.hasRemaining()) {
             Chunk chunk = decodeChunk(byteBuffer, checkSum);
-            if(chunk.isIHDR())
+            if (chunk.isIHDR())
                 ihdr = chunk;
-            else if(chunk.isIEND())
+            else if (chunk.isIEND())
                 iend = chunk;
-            else if(chunk.isIDAT())
+            else if (chunk.isIDAT())
                 idats.add(chunk);
         }
         assert ihdr != null;
@@ -57,7 +60,7 @@ public class PngDecoder {
         checkSum.reset();
         checkSum.update(chunkType);
         checkSum.update(chunkData);
-        if((int) checkSum.getValue() != chunkCrc) {
+        if ((int) checkSum.getValue() != chunkCrc) {
             throw new RuntimeException("CRC check failed");
         }
         return new Chunk(chunkType, chunkData, chunkLength, chunkCrc);
@@ -73,21 +76,21 @@ public class PngDecoder {
         byte filterMethod = data[11];
         byte interlaceMethod = data[12];
 
-        if(compressionMethod != 0) {
+        if (compressionMethod != 0) {
             throw new RuntimeException("Compression method not supported");
         }
-        if(filterMethod != 0) {
+        if (filterMethod != 0) {
             throw new RuntimeException("Filter method not supported");
         }
-        if(interlaceMethod != 0) {
+        if (interlaceMethod != 0) {
             throw new RuntimeException("Interlace method not supported");
         }
-        if(bitDepth != 8) {
+        if (bitDepth != 8) {
             throw new RuntimeException("Bit depth not supported");
         }
         byte trueColour = 2;
         byte trueColourWithAlpha = 6;
-        if(colorType != trueColour && colorType != trueColourWithAlpha) {
+        if (colorType != trueColour && colorType != trueColourWithAlpha) {
             throw new RuntimeException("Color type not supported");
         }
         int bytesPerPixel = colorType == trueColour ? 3 : 4;
@@ -121,7 +124,7 @@ public class PngDecoder {
      * Note: for any given byte, the corresponding byte to its left is the one offset by the number of bytes per pixel <br><br>
      * | c | b | <br>
      * | a | x | <br><br>
-     *
+     * <p>
      * Filter types (<a href="https://www.w3.org/TR/png/#9-table91">Filter types</a>): <br>
      * 0: None <br>
      * 1: Sub <br>
@@ -133,7 +136,7 @@ public class PngDecoder {
         int height = imageSize.height();
         int stride = imageSize.stride();
         int bytesPerPixel = imageSize.bytesPerPixel();
-        try(DataInputStream di = new DataInputStream(new ByteArrayInputStream(decompressedIdatData))) {
+        try (DataInputStream di = new DataInputStream(new ByteArrayInputStream(decompressedIdatData))) {
             byte[] unfilteredData = new byte[height * stride];
 
             byte[] previousRow = new byte[stride];
@@ -148,14 +151,14 @@ public class PngDecoder {
                         for (int byte_idx = 0; byte_idx < stride; byte_idx++) {
                             byte x = scanline[byte_idx];
                             byte a = reconA(scanline_idx, byte_idx, unfilteredData, bytesPerPixel, stride);
-                            unfilteredData[byte_idx+(offset)] = (byte) (x + a);
+                            unfilteredData[byte_idx + (offset)] = (byte) (x + a);
                         }
                     }
                     case 2 -> { //Up
                         for (int byte_idx = 0; byte_idx < stride; byte_idx++) {
                             byte x = scanline[byte_idx];
                             byte b = reconB(scanline_idx, byte_idx, previousRow);
-                            unfilteredData[byte_idx+(offset)] = (byte) (x + b);
+                            unfilteredData[byte_idx + (offset)] = (byte) (x + b);
                         }
                     }
                     case 3 -> {//Average
@@ -163,7 +166,7 @@ public class PngDecoder {
                             byte x = scanline[byte_idx];
                             byte a = reconA(scanline_idx, byte_idx, unfilteredData, bytesPerPixel, stride);
                             byte b = reconB(scanline_idx, byte_idx, previousRow);
-                            unfilteredData[byte_idx+(offset)] = (byte) (x + (a + b) / 2);
+                            unfilteredData[byte_idx + (offset)] = (byte) (x + (a + b) / 2);
                         }
                     }
                     case 4 -> { //Paeth
@@ -172,7 +175,7 @@ public class PngDecoder {
                             byte a = reconA(scanline_idx, byte_idx, unfilteredData, bytesPerPixel, stride);
                             byte b = reconB(scanline_idx, byte_idx, previousRow);
                             byte c = reconC(scanline_idx, byte_idx, previousRow, bytesPerPixel);
-                            unfilteredData[byte_idx+(offset)] = (byte) (x + paethPredictor(a, b, c));
+                            unfilteredData[byte_idx + (offset)] = (byte) (x + paethPredictor(a, b, c));
                         }
                     }
                     default -> throw new RuntimeException("Unsupported filter type: " + filterType);
@@ -210,9 +213,9 @@ public class PngDecoder {
         int pa = Math.abs(p - aInt);
         int pb = Math.abs(p - bInt);
         int pc = Math.abs(p - cInt);
-        if(pa <= pb && pa <= pc)
+        if (pa <= pb && pa <= pc)
             return a;
-        else if(pb <= pc)
+        else if (pb <= pc)
             return b;
         else
             return c;

@@ -12,9 +12,9 @@ import java.util.Arrays;
  */
 public record Chunk(byte[] type, byte[] data, int length, int crc) {
 
-    public static final byte[] IHDR_SIGNATURE = new byte[] {73, 72, 68, 82};
-    public static final byte[] IDAT_SIGNATURE = new byte[] {73, 68, 65, 84};
-    public static final byte[] IEND_SIGNATURE = new byte[] {73, 69, 78, 68};
+    public static final byte[] IHDR_SIGNATURE = new byte[]{73, 72, 68, 82};
+    public static final byte[] IDAT_SIGNATURE = new byte[]{73, 68, 65, 84};
+    public static final byte[] IEND_SIGNATURE = new byte[]{73, 69, 78, 68};
 
     private static final int CHUNK_LENGTH_LENGTH = 4;
     private static final int CHUNK_TYPE_LENGTH = 4;
