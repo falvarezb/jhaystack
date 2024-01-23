@@ -4,14 +4,12 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.util.zip.CRC32;
 
+import static fjab.haystack.Chunk.CHUNK_METADATA_LENGTH;
 import static fjab.haystack.Util.*;
 
 public class PngEncoder {
 
-        private final int chunkLengthLength = 4;
-        private final int chunkTypeLength = 4;
-        private final int chunkCrcLength = 4;
-        private final int chunkMetadataLength = chunkLengthLength + chunkTypeLength + chunkCrcLength;
+
         private final String destFile;
         public PngEncoder(String destFile) {
                 this.destFile = destFile;
@@ -37,7 +35,7 @@ public class PngEncoder {
          * but not including the length field. The CRC is always present, even for chunks containing no data
          */
         private ByteBuffer encodeChunk(Chunk chunk) {
-                ByteBuffer buffer = ByteBuffer.allocate(chunkMetadataLength + chunk.length());
+                ByteBuffer buffer = ByteBuffer.allocate(CHUNK_METADATA_LENGTH + chunk.length());
                 buffer.putInt(chunk.length());
                 buffer.put(chunk.type());
                 buffer.put(chunk.data());
@@ -71,9 +69,9 @@ public class PngEncoder {
         private ByteBuffer splitDataIntoIdatChunks(int chunkSize, byte[] compressedData) {
                 CRC32 checkSum = new CRC32();
                 int numChunks = (int)Math.ceil(compressedData.length / (double)chunkSize);
-                int bufferCapacity = numChunks * chunkMetadataLength + compressedData.length;
+                int bufferCapacity = numChunks * CHUNK_METADATA_LENGTH + compressedData.length;
                 ByteBuffer buffer = ByteBuffer.allocate(bufferCapacity);
-                byte[] chunkType = Chunk.iDatSignature;
+                byte[] chunkType = Chunk.IDAT_SIGNATURE;
                 for (int i = 0; i < numChunks; i++) {
                         int offset = i * chunkSize;
                         int remainingBytes = compressedData.length - offset;

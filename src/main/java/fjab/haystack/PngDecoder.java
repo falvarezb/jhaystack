@@ -45,15 +45,7 @@ public class PngDecoder {
                 decodeIdatData(idats, imageSize)
         );
     }
-
-    /**
-     * Chunk structure (<a href="https://www.w3.org/TR/png/#5Chunk-layout">Chunk layout</a>):<br>
-     * - Length: 4-byte unsigned integer giving the number of bytes in the chunk's data field.<br>
-     * - Chunk type: a sequence of 4 bytes defining the chunk type, e.g. for IHDR chunks, this sequence is 73 72 68 82.<br>
-     * - Chunk data: the data bytes appropriate to the chunk type, if any<br>
-     * - CRC: 32-bit CRC calculated on the preceding bytes in the chunk, including the chunk type field and chunk data fields,
-     * but not including the length field. The CRC is always present, even for chunks containing no data
-     */
+    
     private Chunk decodeChunk(ByteBuffer byteBuffer, CRC32 checkSum) {
         int chunkLength = byteBuffer.getInt();
         byte[] chunkType = new byte[4];
