@@ -1,16 +1,21 @@
 package fjab.haystack;
 
+import fjab.haystack.domain.Chunk;
+import fjab.haystack.domain.ImageSize;
+import fjab.haystack.domain.Png;
+import fjab.haystack.util.CompressUtil;
+
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.zip.CRC32;
 
-import static fjab.haystack.Chunk.CHUNK_METADATA_LENGTH;
-import static fjab.haystack.Chunk.IDAT_SIGNATURE;
-import static fjab.haystack.FilterUtil.filter;
-import static fjab.haystack.Png.PNG_SIGNATURE;
-import static fjab.haystack.TestUtil.testName;
-import static fjab.haystack.TestUtil.write_test_output;
+import static fjab.haystack.domain.Chunk.CHUNK_METADATA_LENGTH;
+import static fjab.haystack.domain.Chunk.IDAT_SIGNATURE;
+import static fjab.haystack.util.FilterUtil.filter;
+import static fjab.haystack.domain.Png.PNG_SIGNATURE;
+import static fjab.haystack.util.TestUtil.testName;
+import static fjab.haystack.util.TestUtil.write_test_output;
 
 public class PngEncoder {
 

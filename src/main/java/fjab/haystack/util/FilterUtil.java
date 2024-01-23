@@ -1,4 +1,6 @@
-package fjab.haystack;
+package fjab.haystack.util;
+
+import fjab.haystack.domain.ImageSize;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

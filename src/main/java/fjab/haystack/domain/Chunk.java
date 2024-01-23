@@ -1,4 +1,4 @@
-package fjab.haystack;
+package fjab.haystack.domain;
 
 import java.util.Arrays;
 

@@ -1,4 +1,4 @@
-package fjab.haystack;
+package fjab.haystack.domain;
 
 /**
  * @param width         in pixels

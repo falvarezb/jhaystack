@@ -1,7 +1,11 @@
 package fjab.haystack;
 
+import fjab.haystack.domain.Chunk;
+import fjab.haystack.domain.ImageSize;
+import fjab.haystack.domain.Png;
+import fjab.haystack.util.CompressUtil;
+
 import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -9,10 +13,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.CRC32;
 
-import static fjab.haystack.FilterUtil.unfilter;
-import static fjab.haystack.TestUtil.testName;
-import static fjab.haystack.TestUtil.write_test_output;
-import static fjab.haystack.Util.*;
+import static fjab.haystack.util.FilterUtil.unfilter;
+import static fjab.haystack.util.TestUtil.testName;
+import static fjab.haystack.util.TestUtil.write_test_output;
+import static fjab.haystack.util.Util.checkPngSignature;
+import static fjab.haystack.util.Util.loadFileIntoByteBuffer;
 
 public class PngDecoder {
 

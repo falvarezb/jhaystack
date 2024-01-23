@@ -1,4 +1,6 @@
-package fjab.haystack;
+package fjab.haystack.util;
+
+import fjab.haystack.App;
 
 import java.io.IOException;
 import java.nio.file.Files;

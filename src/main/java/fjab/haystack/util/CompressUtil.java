@@ -1,4 +1,4 @@
-package fjab.haystack;
+package fjab.haystack.util;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
