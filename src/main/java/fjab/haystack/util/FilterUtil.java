@@ -60,14 +60,14 @@ public class FilterUtil {
                         for (int byte_idx = 0; byte_idx < stride; byte_idx++) {
                             byte x = scanline[byte_idx];
                             byte a = reconA(scanline_idx, byte_idx, unfilteredData, bytesPerPixel, stride);
-                            unfilteredData[byte_idx + (offset)] = (byte) (x + a);
+                            unfilteredData[byte_idx + offset] = (byte) (x + a);
                         }
                     }
                     case 2 -> { //Up
                         for (int byte_idx = 0; byte_idx < stride; byte_idx++) {
                             byte x = scanline[byte_idx];
                             byte b = reconB(scanline_idx, byte_idx, previousRow);
-                            unfilteredData[byte_idx + (offset)] = (byte) (x + b);
+                            unfilteredData[byte_idx + offset] = (byte) (x + b);
                         }
                     }
                     case 3 -> {//Average
@@ -83,7 +83,7 @@ public class FilterUtil {
                              */
                             int aInt = a & 0xFF;
                             int bInt = b & 0xFF;
-                            unfilteredData[byte_idx + (offset)] = (byte) (x + (aInt + bInt) / 2);
+                            unfilteredData[byte_idx + offset] = (byte) (x + (aInt + bInt) / 2);
                         }
                     }
                     case 4 -> { //Paeth
@@ -92,7 +92,7 @@ public class FilterUtil {
                             byte a = reconA(scanline_idx, byte_idx, unfilteredData, bytesPerPixel, stride);
                             byte b = reconB(scanline_idx, byte_idx, previousRow);
                             byte c = reconC(scanline_idx, byte_idx, previousRow, bytesPerPixel);
-                            unfilteredData[byte_idx + (offset)] = (byte) (x + paethPredictor(a, b, c));
+                            unfilteredData[byte_idx + offset] = (byte) (x + paethPredictor(a, b, c));
                         }
                     }
                     default -> throw new RuntimeException("Unsupported filter type: " + filterType);
