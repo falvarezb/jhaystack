@@ -35,6 +35,15 @@ public class PngTest {
         runTestCase(testName);
     }
 
+    @Test
+    public void testFileWithFilterType3() throws IOException {
+        /*
+            All previous tests have filter_type != 3 (average)
+         */
+        var testName = "fire";
+        runTestCase(testName);
+    }
+
     private void runTestCase(String testName) throws IOException {
         var originalTestFileName = testName + ".png";
         var resultTestFileName = testName + "-modified.png";

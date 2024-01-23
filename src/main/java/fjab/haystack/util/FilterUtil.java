@@ -75,7 +75,15 @@ public class FilterUtil {
                             byte x = scanline[byte_idx];
                             byte a = reconA(scanline_idx, byte_idx, unfilteredData, bytesPerPixel, stride);
                             byte b = reconB(scanline_idx, byte_idx, previousRow);
-                            unfilteredData[byte_idx + (offset)] = (byte) (x + (a + b) / 2);
+                            /*
+                                In Java, the byte data type has a range from -128 to 127
+                                However, in the context of this function, bytes are treated as unsigned and have a range from 0 to 255.
+                                To fix this and make sure that the result of the division is correct,
+                                byte values need to be converted to int in the range of 0 to 255.
+                             */
+                            int aInt = a & 0xFF;
+                            int bInt = b & 0xFF;
+                            unfilteredData[byte_idx + (offset)] = (byte) (x + (aInt + bInt) / 2);
                         }
                     }
                     case 4 -> { //Paeth
@@ -112,7 +120,8 @@ public class FilterUtil {
         /*
             In Java, the byte data type has a range from -128 to 127
             However, in the context of this function, bytes are treated as unsigned and have a range from 0 to 255.
-            To fix this and avoid unexpected results due to overflow, byte values need to be converted to int in the range of 0 to 255.
+            To fix this and make sure that comparisons between values 'pa', 'pb' and 'pc' are correct,
+            byte values need to be converted to int in the range of 0 to 255.
          */
         int aInt = a & 0xFF;
         int bInt = b & 0xFF;
