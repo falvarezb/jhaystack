@@ -17,21 +17,14 @@ public class PngEncoder {
                 this.destFile = destFile;
         }
 
-        public void encode(Png png) {
+        public void encode(Png png) throws IOException {
                 try(
-                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        DataOutputStream dos = new DataOutputStream(baos);
                         FileOutputStream fos = new FileOutputStream(destFile)
                 ) {
-                        dos.write(PNG_SIGNATURE);
-                        dos.write(encodeChunk(png.ihdr()).array());
-                        dos.write(encodeIdat(png.imageSize(), png.imageData()).array());
-                        dos.write(encodeChunk(png.iend()).array());
-                        dos.flush();
-                        fos.write(baos.toByteArray());
-                        //return baos.toByteArray();
-                } catch (IOException e) {
-                        throw new RuntimeException(e);
+                        fos.write(PNG_SIGNATURE);
+                        fos.write(encodeChunk(png.ihdr()).array());
+                        fos.write(encodeIdat(png.imageSize(), png.imageData()).array());
+                        fos.write(encodeChunk(png.iend()).array());
                 }
         }
 
@@ -80,13 +73,13 @@ public class PngEncoder {
                 int numChunks = (int)Math.ceil(compressedData.length / (double)chunkSize);
                 int bufferCapacity = numChunks * chunkMetadataLength + compressedData.length;
                 ByteBuffer buffer = ByteBuffer.allocate(bufferCapacity);
+                byte[] chunkType = Chunk.iDatSignature;
                 for (int i = 0; i < numChunks; i++) {
                         int offset = i * chunkSize;
                         int remainingBytes = compressedData.length - offset;
                         int chunkLength = Math.min(chunkSize, remainingBytes);
                         byte[] chunkData = new byte[chunkLength];
                         System.arraycopy(compressedData, offset, chunkData, 0, chunkLength);
-                        byte[] chunkType = Chunk.iDatSignature;
                         checkSum.reset();
                         checkSum.update(chunkType);
                         checkSum.update(chunkData);
