@@ -54,21 +54,24 @@ public class PngEncoder {
         }
 
         private ByteBuffer encodeIdat(ImageSize imageSize, byte[] imageData) throws IOException {
-                try(
-                        ByteArrayOutputStream baos = new ByteArrayOutputStream((imageSize.stride() + 1) + imageSize.height())
-                ) {
+                byte[] filteredData = filter(imageSize, imageData);
+                write_test_output("filteredData", testName(destFile), filteredData);
+                byte[] compressedData = compress(filteredData);
+                write_test_output("compressedData", testName(destFile), compressedData);
+                // split compressed data into IDAT chunks of at most 2^16 - 1 bytes
+                int chunkSize = 65535;
+                return splitDataIntoIdatChunks(chunkSize, compressedData);
+
+        }
+
+        private byte[] filter(ImageSize imageSize, byte[] imageData) throws IOException {
+                try(ByteArrayOutputStream baos = new ByteArrayOutputStream((imageSize.stride() + 1) + imageSize.height())) {
+                        byte filterType = 0;
                         for (int i = 0; i < imageSize.height(); i++) {
-                                byte filterType = 0;
                                 baos.write(filterType);
                                 baos.write(imageData, i*imageSize.stride(), imageSize.stride());
                         }
-                        byte[] filteredData = baos.toByteArray();
-                        write_test_output("filteredData", testName(destFile), filteredData);
-                        byte[] compressedData = compress(filteredData);
-                        write_test_output("compressedData", testName(destFile), compressedData);
-                        // split compressed data into IDAT chunks of at most 2^16 - 1 bytes
-                        int chunkSize = 65535;
-                        return splitDataIntoIdatChunks(chunkSize, compressedData);
+                        return baos.toByteArray();
                 }
         }
 
@@ -80,14 +83,14 @@ public class PngEncoder {
                 for (int i = 0; i < numChunks; i++) {
                         int offset = i * chunkSize;
                         int remainingBytes = compressedData.length - offset;
-                        int length = Math.min(chunkSize, remainingBytes);
-                        byte[] chunkData = new byte[length];
-                        System.arraycopy(compressedData, offset, chunkData, 0, length);
+                        int chunkLength = Math.min(chunkSize, remainingBytes);
+                        byte[] chunkData = new byte[chunkLength];
+                        System.arraycopy(compressedData, offset, chunkData, 0, chunkLength);
                         byte[] chunkType = Chunk.iDatSignature;
                         checkSum.reset();
                         checkSum.update(chunkType);
                         checkSum.update(chunkData);
-                        Chunk chunk = new Chunk(chunkType, chunkData, length, (int) checkSum.getValue());
+                        Chunk chunk = new Chunk(chunkType, chunkData, chunkLength, (int) checkSum.getValue());
                         buffer.put(encodeChunk(chunk));
                 }
                 return buffer;
