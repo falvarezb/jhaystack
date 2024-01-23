@@ -1,16 +1,22 @@
 package fjab.haystack;
 
+import java.util.Arrays;
+
 public record Chunk(byte[] type, byte[] data, int length, int crc) {
 
+    public static byte[] iHdrSignature = new byte[] {73, 72, 68, 82};
+    public static byte[] iDatSignature = new byte[] {73, 68, 65, 84};
+    public static byte[] iEndSignature = new byte[] {73, 69, 78, 68};
+
     public boolean isIHDR() {
-        return type[0] == 73 && type[1] == 72 && type[2] == 68 && type[3] == 82;
+        return Arrays.equals(this.type, iHdrSignature);
     }
 
     public boolean isIDAT() {
-        return type[0] == 73 && type[1] == 68 && type[2] == 65 && type[3] == 84;
+        return Arrays.equals(this.type, iDatSignature);
     }
 
     public boolean isIEND() {
-        return type[0] == 73 && type[1] == 69 && type[2] == 78 && type[3] == 68;
+        return Arrays.equals(this.type, iEndSignature);
     }
 }

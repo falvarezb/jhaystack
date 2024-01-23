@@ -75,29 +75,26 @@ public class PngEncoder {
                                 numChunks++;
                                 bufferCapacity += (chunkMetadataLength + lastChunkSize);
                         }
-                        ByteBuffer buffer = ByteBuffer.allocate(bufferCapacity);
-                        CRC32 checkSum = new CRC32();
-                        for (int i = 0; i < numChunks; i++) {
-                                int offset = i * chunkSize;
-                                int remainingBytes = compressedData.length - offset;
-                                int length = Math.min(chunkSize, remainingBytes);
-                                byte[] chunkData = new byte[length];
-                                System.arraycopy(compressedData, offset, chunkData, 0, length);
-                                byte[] chunkType = new byte[] {73, 68, 65, 84};
-                                checkSum.reset();
-                                checkSum.update(chunkType);
-                                checkSum.update(chunkData);
-                                Chunk chunk = new Chunk(chunkType, chunkData, length, (int) checkSum.getValue());
-                                buffer.put(encodeChunk(chunk));
-                        }
-                        return buffer;
+                        return splitDataIntoIdatChunks(numChunks, chunkSize, compressedData, new CRC32(), ByteBuffer.allocate(bufferCapacity));
                 }
         }
 
-
-
-
-
+        private ByteBuffer splitDataIntoIdatChunks(int numChunks, int chunkSize, byte[] compressedData, CRC32 checkSum, ByteBuffer buffer) {
+                for (int i = 0; i < numChunks; i++) {
+                        int offset = i * chunkSize;
+                        int remainingBytes = compressedData.length - offset;
+                        int length = Math.min(chunkSize, remainingBytes);
+                        byte[] chunkData = new byte[length];
+                        System.arraycopy(compressedData, offset, chunkData, 0, length);
+                        byte[] chunkType = Chunk.iDatSignature;
+                        checkSum.reset();
+                        checkSum.update(chunkType);
+                        checkSum.update(chunkData);
+                        Chunk chunk = new Chunk(chunkType, chunkData, length, (int) checkSum.getValue());
+                        buffer.put(encodeChunk(chunk));
+                }
+                return buffer;
+        }
 
 
 }

@@ -25,8 +25,9 @@ public class PngDecoder {
         Chunk ihdr = null;
         Chunk iend = null;
         List<Chunk> idats = new ArrayList<>();
+        CRC32 checkSum = new CRC32();
         while (byteBuffer.hasRemaining()) {
-            Chunk chunk = decodeChunk(byteBuffer);
+            Chunk chunk = decodeChunk(byteBuffer, checkSum);
             if(chunk.isIHDR())
                 ihdr = chunk;
             else if(chunk.isIEND())
@@ -53,7 +54,7 @@ public class PngDecoder {
      * - CRC: 32-bit CRC calculated on the preceding bytes in the chunk, including the chunk type field and chunk data fields,
      * but not including the length field. The CRC is always present, even for chunks containing no data
      */
-    private Chunk decodeChunk(ByteBuffer byteBuffer) {
+    private Chunk decodeChunk(ByteBuffer byteBuffer, CRC32 checkSum) {
         int chunkLength = byteBuffer.getInt();
         byte[] chunkType = new byte[4];
         byteBuffer.get(chunkType);
@@ -61,7 +62,7 @@ public class PngDecoder {
         byteBuffer.get(chunkData);
         int chunkCrc = byteBuffer.getInt();
 
-        CRC32 checkSum = new CRC32();
+        checkSum.reset();
         checkSum.update(chunkType);
         checkSum.update(chunkData);
         if((int) checkSum.getValue() != chunkCrc) {
