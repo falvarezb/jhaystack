@@ -4,10 +4,10 @@ import fjab.haystack.domain.ImageSize;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 public class FilterUtil {
 
@@ -49,6 +49,20 @@ public class FilterUtil {
         return unfilteredData;
     }
 
+
+    public static byte[] unfilter(byte[] decompressedIdatData, ImageSize imageSize) {
+        int height = imageSize.height();
+        int stride = imageSize.stride();
+
+        byte[] unfilteredData = new byte[height * stride];
+        for (int scanline_idx = 0; scanline_idx < height; scanline_idx++) {
+            processScanline(scanline_idx, decompressedIdatData, unfilteredData, imageSize);
+        }
+        assert decompressedIdatData.length == unfilteredData.length + height;
+        return unfilteredData;
+
+    }
+
     /**
      * Filtering concepts (<a href="https://www.w3.org/TR/png/#9Filters">Filters</a>) <br>
      * Named filter bytes (<a href="https://www.w3.org/TR/png/#table-named-filter-bytes">Table: named filter bytes</a>): <br>
@@ -67,19 +81,6 @@ public class FilterUtil {
      * 3: Average <br>
      * 4: Paeth <br>
      */
-    public static byte[] unfilter(byte[] decompressedIdatData, ImageSize imageSize) {
-        int height = imageSize.height();
-        int stride = imageSize.stride();
-
-        byte[] unfilteredData = new byte[height * stride];
-        for (int scanline_idx = 0; scanline_idx < height; scanline_idx++) {
-            processScanline(scanline_idx, decompressedIdatData, unfilteredData, imageSize);
-        }
-        assert decompressedIdatData.length == unfilteredData.length + height;
-        return unfilteredData;
-
-    }
-
     private static void processScanline(int scanline_idx, byte[] decompressedIdatData, byte[] unfilteredData, ImageSize imageSize) {
         int stride = imageSize.stride();
         int bytesPerPixel = imageSize.bytesPerPixel();
