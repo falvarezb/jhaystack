@@ -39,7 +39,7 @@ public class FilterUtil {
      * 3: Average <br>
      * 4: Paeth <br>
      */
-    public static byte[] unfilter(byte[] decompressedIdatData, ImageSize imageSize) throws IOException {
+    public static byte[] unfilter(byte[] decompressedIdatData, ImageSize imageSize) {
         int height = imageSize.height();
         int stride = imageSize.stride();
         int bytesPerPixel = imageSize.bytesPerPixel();
@@ -100,16 +100,16 @@ public class FilterUtil {
 
     }
 
-    private static byte reconC(int scanline_idx, int byte_idx, byte[] unfilteredData, int bytesPerPixel, int stride) {
-        return byte_idx < bytesPerPixel || scanline_idx == 0 ? 0 : unfilteredData[(scanline_idx-1) * stride + byte_idx - bytesPerPixel];
+    private static byte reconC(int scanline_index, int byte_index_in_scanline, byte[] unfilteredData, int bytesPerPixel, int stride) {
+        return byte_index_in_scanline < bytesPerPixel || scanline_index == 0 ? 0 : unfilteredData[(scanline_index-1) * stride + byte_index_in_scanline - bytesPerPixel];
     }
 
-    private static byte reconB(int scanline_idx, int byte_idx, byte[] unfilteredData, int stride) {
-        return scanline_idx == 0 ? 0 : unfilteredData[(scanline_idx-1) * stride + byte_idx];
+    private static byte reconB(int scanline_index, int byte_index_in_scanline, byte[] unfilteredData, int stride) {
+        return scanline_index == 0 ? 0 : unfilteredData[(scanline_index-1) * stride + byte_index_in_scanline];
     }
 
     private static byte reconA(int scanline_index, int byte_index_in_scanline, byte[] unfilteredData, int bytesPerPixel, int stride) {
-        return byte_index_in_scanline < bytesPerPixel ? 0 : unfilteredData[byte_index_in_scanline + (scanline_index * stride) - bytesPerPixel];
+        return byte_index_in_scanline < bytesPerPixel ? 0 : unfilteredData[ scanline_index * stride + byte_index_in_scanline - bytesPerPixel];
     }
 
     private static byte paethPredictor(byte a, byte b, byte c) {
