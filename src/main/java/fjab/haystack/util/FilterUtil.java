@@ -4,10 +4,10 @@ import fjab.haystack.domain.ImageSize;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 public class FilterUtil {
 
@@ -134,13 +134,9 @@ public class FilterUtil {
     }
 
     private static Map<Byte, List<Integer>> groupScanlinesByFilterType(byte[] decompressedIdatData, ImageSize imageSize) {
-        Map<Byte, List<Integer>> scanlinesByFilterType = new HashMap<>();
-        for (int scanline_idx = 0; scanline_idx < imageSize.height(); scanline_idx++) {
-            int decompressedDataOffset = scanline_idx * (imageSize.stride() + 1); // +1 because of the filter type byte
-            byte filterType = decompressedIdatData[decompressedDataOffset];
-            scanlinesByFilterType.computeIfAbsent(filterType, k -> new ArrayList<>()).add(scanline_idx);
-        }
-        return scanlinesByFilterType;
+        return IntStream.range(0, imageSize.height())
+                .boxed()
+                .collect(Collectors.groupingBy(i -> decompressedIdatData[i * (imageSize.stride() + 1)]));
     }
 
     private static byte reconC(int scanline_index, int byte_index_in_scanline, byte[] unfilteredData, int bytesPerPixel, int stride) {
