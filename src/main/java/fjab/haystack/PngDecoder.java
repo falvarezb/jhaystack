@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.CRC32;
 
-import static fjab.haystack.util.FilterUtil.unfilter;
+import static fjab.haystack.util.FilterUtil.unfilterPar;
 import static fjab.haystack.util.TestUtil.testName;
 import static fjab.haystack.util.TestUtil.write_test_output;
 import static fjab.haystack.util.Util.checkPngSignature;
@@ -111,7 +111,7 @@ public class PngDecoder {
         assert decompressedIdatData.length == (imageSize.height() * imageSize.stride()) + imageSize.height() : "Decompressed data length does not match expected length";
         write_test_output("decompressedData", testName(sourceFile), decompressedIdatData);
 
-        byte[] unfilteredData = unfilter(decompressedIdatData, imageSize);
+        byte[] unfilteredData = unfilterPar(decompressedIdatData, imageSize);
         write_test_output("unfilteredData", testName(sourceFile), unfilteredData);
         return unfilteredData;
     }

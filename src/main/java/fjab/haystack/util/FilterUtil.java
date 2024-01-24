@@ -4,6 +4,10 @@ import fjab.haystack.domain.ImageSize;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class FilterUtil {
 
@@ -19,6 +23,30 @@ public class FilterUtil {
             }
             return baos.toByteArray();
         }
+    }
+
+    public static byte[] unfilterPar(byte[] decompressedIdatData, ImageSize imageSize) {
+        Map<Byte, List<Integer>> scanlinesByFilterType = groupScanlinesByFilterType(decompressedIdatData, imageSize);
+        int height = imageSize.height();
+        int stride = imageSize.stride();
+
+        byte[] unfilteredData = new byte[height * stride];
+
+        // parallel processing of scanlines with filter type 0 or 1
+        scanlinesByFilterType.entrySet().parallelStream()
+                .filter(entry -> entry.getKey() == 0 || entry.getKey() == 1)
+                .flatMap(entry -> entry.getValue().stream())
+                .forEach(scanline_idx -> processScanline(scanline_idx, decompressedIdatData, unfilteredData, imageSize));
+
+        // sequential processing of scanlines with filter type 2, 3 or 4
+        scanlinesByFilterType.entrySet().stream()
+                .filter(entry -> entry.getKey() != 0 && entry.getKey() != 1)
+                .flatMap(entry -> entry.getValue().stream())
+                .sorted()
+                .forEach(scanline_idx -> processScanline(scanline_idx, decompressedIdatData, unfilteredData, imageSize));
+
+        assert decompressedIdatData.length == unfilteredData.length + height;
+        return unfilteredData;
     }
 
     /**
@@ -42,62 +70,77 @@ public class FilterUtil {
     public static byte[] unfilter(byte[] decompressedIdatData, ImageSize imageSize) {
         int height = imageSize.height();
         int stride = imageSize.stride();
-        int bytesPerPixel = imageSize.bytesPerPixel();
 
         byte[] unfilteredData = new byte[height * stride];
-        byte[] scanline = new byte[stride]; //this byte[] can be reused for each scanline
         for (int scanline_idx = 0; scanline_idx < height; scanline_idx++) {
-            int decompressedDataOffset = scanline_idx * (stride + 1); // +1 because of the filter type byte
-            int unfilteredDataOffset = scanline_idx * stride;
-            byte filterType = decompressedIdatData[decompressedDataOffset];
-            System.arraycopy(decompressedIdatData, decompressedDataOffset + 1, scanline, 0, stride);
-            switch (filterType) {
-                case 0 -> System.arraycopy(scanline, 0, unfilteredData, unfilteredDataOffset, scanline.length); //None
-                case 1 -> { //Sub
-                    for (int byte_idx = 0; byte_idx < stride; byte_idx++) {
-                        byte x = scanline[byte_idx];
-                        byte a = reconA(scanline_idx, byte_idx, unfilteredData, bytesPerPixel, stride);
-                        unfilteredData[byte_idx + unfilteredDataOffset] = (byte) (x + a);
-                    }
+            processScanline(scanline_idx, decompressedIdatData, unfilteredData, imageSize);
+        }
+        assert decompressedIdatData.length == unfilteredData.length + height;
+        return unfilteredData;
+
+    }
+
+    private static void processScanline(int scanline_idx, byte[] decompressedIdatData, byte[] unfilteredData, ImageSize imageSize) {
+        int stride = imageSize.stride();
+        int bytesPerPixel = imageSize.bytesPerPixel();
+        byte[] scanline = new byte[stride];
+        int decompressedDataOffset = scanline_idx * (stride + 1); // +1 because of the filter type byte
+        int unfilteredDataOffset = scanline_idx * stride;
+        byte filterType = decompressedIdatData[decompressedDataOffset];
+        System.arraycopy(decompressedIdatData, decompressedDataOffset + 1, scanline, 0, stride);
+        switch (filterType) {
+            case 0 -> System.arraycopy(scanline, 0, unfilteredData, unfilteredDataOffset, scanline.length); //None
+            case 1 -> { //Sub
+                for (int byte_idx = 0; byte_idx < stride; byte_idx++) {
+                    byte x = scanline[byte_idx];
+                    byte a = reconA(scanline_idx, byte_idx, unfilteredData, bytesPerPixel, stride);
+                    unfilteredData[byte_idx + unfilteredDataOffset] = (byte) (x + a);
                 }
-                case 2 -> { //Up
-                    for (int byte_idx = 0; byte_idx < stride; byte_idx++) {
-                        byte x = scanline[byte_idx];
-                        byte b = reconB(scanline_idx, byte_idx, unfilteredData, stride);
-                        unfilteredData[byte_idx + unfilteredDataOffset] = (byte) (x + b);
-                    }
+            }
+            case 2 -> { //Up
+                for (int byte_idx = 0; byte_idx < stride; byte_idx++) {
+                    byte x = scanline[byte_idx];
+                    byte b = reconB(scanline_idx, byte_idx, unfilteredData, stride);
+                    unfilteredData[byte_idx + unfilteredDataOffset] = (byte) (x + b);
                 }
-                case 3 -> {//Average
-                    for (int byte_idx = 0; byte_idx < stride; byte_idx++) {
-                        byte x = scanline[byte_idx];
-                        byte a = reconA(scanline_idx, byte_idx, unfilteredData, bytesPerPixel, stride);
-                        byte b = reconB(scanline_idx, byte_idx, unfilteredData, stride);
+            }
+            case 3 -> {//Average
+                for (int byte_idx = 0; byte_idx < stride; byte_idx++) {
+                    byte x = scanline[byte_idx];
+                    byte a = reconA(scanline_idx, byte_idx, unfilteredData, bytesPerPixel, stride);
+                    byte b = reconB(scanline_idx, byte_idx, unfilteredData, stride);
                             /*
                                 In Java, the byte data type has a range from -128 to 127
                                 However, in the context of this function, bytes are treated as unsigned and have a range from 0 to 255.
                                 To fix this and make sure that the result of the division is correct,
                                 byte values need to be converted to int in the range of 0 to 255.
                              */
-                        int aInt = a & 0xFF;
-                        int bInt = b & 0xFF;
-                        unfilteredData[byte_idx + unfilteredDataOffset] = (byte) (x + (aInt + bInt) / 2);
-                    }
+                    int aInt = a & 0xFF;
+                    int bInt = b & 0xFF;
+                    unfilteredData[byte_idx + unfilteredDataOffset] = (byte) (x + (aInt + bInt) / 2);
                 }
-                case 4 -> { //Paeth
-                    for (int byte_idx = 0; byte_idx < stride; byte_idx++) {
-                        byte x = scanline[byte_idx];
-                        byte a = reconA(scanline_idx, byte_idx, unfilteredData, bytesPerPixel, stride);
-                        byte b = reconB(scanline_idx, byte_idx, unfilteredData, stride);
-                        byte c = reconC(scanline_idx, byte_idx, unfilteredData, bytesPerPixel, stride);
-                        unfilteredData[byte_idx + unfilteredDataOffset] = (byte) (x + paethPredictor(a, b, c));
-                    }
-                }
-                default -> throw new RuntimeException("Unsupported filter type: " + filterType);
             }
+            case 4 -> { //Paeth
+                for (int byte_idx = 0; byte_idx < stride; byte_idx++) {
+                    byte x = scanline[byte_idx];
+                    byte a = reconA(scanline_idx, byte_idx, unfilteredData, bytesPerPixel, stride);
+                    byte b = reconB(scanline_idx, byte_idx, unfilteredData, stride);
+                    byte c = reconC(scanline_idx, byte_idx, unfilteredData, bytesPerPixel, stride);
+                    unfilteredData[byte_idx + unfilteredDataOffset] = (byte) (x + paethPredictor(a, b, c));
+                }
+            }
+            default -> throw new RuntimeException("Unsupported filter type: " + filterType);
         }
-        assert decompressedIdatData.length == unfilteredData.length + height;
-        return unfilteredData;
+    }
 
+    private static Map<Byte, List<Integer>> groupScanlinesByFilterType(byte[] decompressedIdatData, ImageSize imageSize) {
+        Map<Byte, List<Integer>> scanlinesByFilterType = new HashMap<>();
+        for (int scanline_idx = 0; scanline_idx < imageSize.height(); scanline_idx++) {
+            int decompressedDataOffset = scanline_idx * (imageSize.stride() + 1); // +1 because of the filter type byte
+            byte filterType = decompressedIdatData[decompressedDataOffset];
+            scanlinesByFilterType.computeIfAbsent(filterType, k -> new ArrayList<>()).add(scanline_idx);
+        }
+        return scanlinesByFilterType;
     }
 
     private static byte reconC(int scanline_index, int byte_index_in_scanline, byte[] unfilteredData, int bytesPerPixel, int stride) {
