@@ -45,11 +45,11 @@ public class FilterUtil {
         int bytesPerPixel = imageSize.bytesPerPixel();
 
         byte[] unfilteredData = new byte[height * stride];
+        byte[] scanline = new byte[stride]; //this byte[] can be reused for each scanline
         for (int scanline_idx = 0; scanline_idx < height; scanline_idx++) {
             int decompressedDataOffset = scanline_idx * (stride + 1); // +1 because of the filter type byte
             int unfilteredDataOffset = scanline_idx * stride;
             byte filterType = decompressedIdatData[decompressedDataOffset];
-            byte[] scanline = new byte[stride];
             System.arraycopy(decompressedIdatData, decompressedDataOffset + 1, scanline, 0, stride);
             switch (filterType) {
                 case 0 -> System.arraycopy(scanline, 0, unfilteredData, unfilteredDataOffset, scanline.length); //None
